@@ -1,15 +1,21 @@
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using MldevDashboard.Domain.Systems;
+using MldevDashboard.Infrastructure.Identity;
 
 namespace MldevDashboard.Infrastructure.Persistence;
 
 public sealed class MldevDashboardDbContext(DbContextOptions<MldevDashboardDbContext> options)
-    : DbContext(options)
+    : IdentityDbContext<ApplicationUser, IdentityRole<Guid>, Guid>(options)
 {
     public DbSet<SystemDefinition> Systems => Set<SystemDefinition>();
 
+    public DbSet<SystemAccountAccess> SystemAccountAccesses => Set<SystemAccountAccess>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        base.OnModelCreating(modelBuilder);
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(MldevDashboardDbContext).Assembly);
     }
 }
