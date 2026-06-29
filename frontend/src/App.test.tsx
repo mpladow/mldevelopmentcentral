@@ -46,6 +46,14 @@ const accountsResponse = [
   },
 ];
 
+const availableSystemsResponse = [
+  {
+    id: 1,
+    systemKey: 'Global',
+    label: 'Global',
+  },
+];
+
 describe('App', () => {
   beforeEach(() => {
     vi.stubGlobal('fetch', vi.fn());
@@ -173,19 +181,43 @@ describe('App', () => {
 });
 
 function mockLogin(response: typeof loginResponse) {
-  vi.mocked(fetch)
-    .mockResolvedValueOnce(
+  vi.mocked(fetch).mockImplementation((input) => {
+    const url = input.toString();
+
+    if (url.endsWith('/api/auth/login')) {
+      return Promise.resolve(
+        new Response(JSON.stringify(response), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
+    }
+
+    if (url.endsWith('/api/systems/available')) {
+      return Promise.resolve(
+        new Response(JSON.stringify(availableSystemsResponse), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
+    }
+
+    if (url.endsWith('/api/accounts')) {
+      return Promise.resolve(
+        new Response(JSON.stringify(accountsResponse), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
+    }
+
+    return Promise.resolve(
       new Response(JSON.stringify(response), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      }),
-    )
-    .mockResolvedValueOnce(
-      new Response(JSON.stringify(accountsResponse), {
-        status: 200,
+        status: 404,
         headers: { 'Content-Type': 'application/json' },
       }),
     );
+  });
 }
 
 async function signIn() {
