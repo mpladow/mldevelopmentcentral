@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using MldevDashboard.Infrastructure.Persistence;
 
@@ -11,9 +12,11 @@ using MldevDashboard.Infrastructure.Persistence;
 namespace MldevDashboard.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(MldevDashboardDbContext))]
-    partial class MldevDashboardDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260629070821_AddIdentity")]
+    partial class AddIdentity
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -187,21 +190,6 @@ namespace MldevDashboard.Infrastructure.Persistence.Migrations
                     b.ToTable("Systems", (string)null);
                 });
 
-            modelBuilder.Entity("MldevDashboard.Domain.Systems.SystemAccountAccess", b =>
-                {
-                    b.Property<int>("SystemDefinitionId")
-                        .HasColumnType("int");
-
-                    b.Property<Guid>("AccountId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("SystemDefinitionId", "AccountId");
-
-                    b.HasIndex("AccountId");
-
-                    b.ToTable("SystemAccountAccesses", (string)null);
-                });
-
             modelBuilder.Entity("MldevDashboard.Infrastructure.Identity.ApplicationUser", b =>
                 {
                     b.Property<Guid>("Id")
@@ -321,22 +309,6 @@ namespace MldevDashboard.Infrastructure.Persistence.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-                });
-
-            modelBuilder.Entity("MldevDashboard.Domain.Systems.SystemAccountAccess", b =>
-                {
-                    b.HasOne("MldevDashboard.Domain.Systems.SystemDefinition", "SystemDefinition")
-                        .WithMany("AccountAccesses")
-                        .HasForeignKey("SystemDefinitionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("SystemDefinition");
-                });
-
-            modelBuilder.Entity("MldevDashboard.Domain.Systems.SystemDefinition", b =>
-                {
-                    b.Navigation("AccountAccesses");
                 });
 #pragma warning restore 612, 618
         }
