@@ -1,0 +1,21 @@
+# .NET
+bin/
+obj/
+*.user
+*.rsuser
+.vs/
+
+# Frontend
+node_modules/
+dist/
+.vite/
+
+# Local environment
+.env
+.env.*
+!.env.example
+appsettings.Local.json
+
+# Logs
+*.log
+/backend/src/MldevDashboard.Api/appsettings.Development.json
