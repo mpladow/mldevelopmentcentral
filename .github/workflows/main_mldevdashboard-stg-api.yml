@@ -23,10 +23,16 @@ jobs:
         with:
           dotnet-version: '8.x'
 
-      - name: Build with dotnet
-        run: dotnet build --configuration Release
+      - name: Restore
+        run: dotnet restore backend/MldevDashboard.sln
 
-      - name: dotnet publish
+      - name: Build
+        run: dotnet build backend/MldevDashboard.sln --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test backend/MldevDashboard.sln --configuration Release --no-build
+
+      - name: Publish
         run: dotnet publish backend/src/MldevDashboard.Api/MldevDashboard.Api.csproj -c Release -o "${{ env.DOTNET_ROOT }}/myapp"
 
       - name: Upload artifact for deployment job
