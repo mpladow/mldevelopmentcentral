@@ -1,8 +1,7 @@
-import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { ArrowLeft, Edit3, Save, Server } from 'lucide-react';
-import { apiBaseUrl } from '../../config/api';
-import type { Account } from '../../types/accounts';
+import { FormEvent, useEffect, useState } from 'react';
 import type { DashboardSystem } from '../../types/systems';
+import { useSystems } from './useSystems';
 
 type SystemEditorMode =
   | { type: 'list' }
@@ -25,38 +24,9 @@ const emptySystemForm: SystemFormState = {
 };
 
 export function SystemsView({ onSystemsChanged, token }: SystemsViewProps) {
-  const [systems, setSystems] = useState<DashboardSystem[]>([]);
-  const [accounts, setAccounts] = useState<Account[]>([]);
-  const [message, setMessage] = useState('');
   const [mode, setMode] = useState<SystemEditorMode>({ type: 'list' });
   const [form, setForm] = useState<SystemFormState>(emptySystemForm);
-
-  const loadSystems = useCallback(async () => {
-    setMessage('');
-    const response = await fetch(`${apiBaseUrl}/api/systems`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-
-    if (!response.ok) {
-      setMessage('Unable to load systems.');
-      return;
-    }
-
-    setSystems((await response.json()) as DashboardSystem[]);
-  }, [token]);
-
-  const loadAccounts = useCallback(async () => {
-    const response = await fetch(`${apiBaseUrl}/api/accounts`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-
-    if (!response.ok) {
-      setMessage('Unable to load account options.');
-      return;
-    }
-
-    setAccounts((await response.json()) as Account[]);
-  }, [token]);
+  const { systems, accounts, message, loadSystems, loadAccounts, saveSystem } = useSystems(token);
 
   useEffect(() => {
     void loadSystems();
@@ -64,13 +34,11 @@ export function SystemsView({ onSystemsChanged, token }: SystemsViewProps) {
   }, [loadAccounts, loadSystems]);
 
   function openCreateSystem() {
-    setMessage('');
     setForm(emptySystemForm);
     setMode({ type: 'create' });
   }
 
   function openEditSystem(system: DashboardSystem) {
-    setMessage('');
     setForm({
       label: system.label,
       accountIds: system.accounts.map((account) => account.id),
@@ -79,7 +47,6 @@ export function SystemsView({ onSystemsChanged, token }: SystemsViewProps) {
   }
 
   function closeEditor() {
-    setMessage('');
     setMode({ type: 'list' });
   }
 
@@ -92,34 +59,21 @@ export function SystemsView({ onSystemsChanged, token }: SystemsViewProps) {
     }));
   }
 
-  async function saveSystem(event: FormEvent<HTMLFormElement>) {
+  async function saveSystemHandler(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setMessage('');
 
     const isCreateMode = mode.type === 'create';
-    const response = await fetch(
-      isCreateMode ? `${apiBaseUrl}/api/systems` : `${apiBaseUrl}/api/systems/${mode.type === 'edit' ? mode.system.id : ''}`,
-      {
-        method: isCreateMode ? 'POST' : 'PUT',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          label: form.label,
-          accountIds: form.accountIds,
-        }),
-      },
-    );
+    const systemId = mode.type === 'edit' ? mode.system.id : undefined;
+    const didSave = await saveSystem({
+      label: form.label,
+      accountIds: form.accountIds,
+    }, systemId);
 
-    if (!response.ok) {
-      setMessage(isCreateMode ? 'Unable to create the system.' : 'Unable to update the system.');
+    if (!didSave) {
       return;
     }
 
-    setMessage(isCreateMode ? 'System created.' : 'System updated.');
     setMode({ type: 'list' });
-    await loadSystems();
     onSystemsChanged();
   }
 

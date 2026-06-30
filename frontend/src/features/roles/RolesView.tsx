@@ -1,28 +1,13 @@
-import { useMemo, useState } from 'react';
 import { ShieldCheck } from 'lucide-react';
-import { apiBaseUrl } from '../../config/api';
+import { useMemo } from 'react';
+import { useRoles } from './useRoles';
 
 type RolesViewProps = {
   token: string;
 };
 
 export function RolesView({ token }: RolesViewProps) {
-  const [roles, setRoles] = useState<string[]>([]);
-  const [message, setMessage] = useState('');
-
-  async function loadRoles() {
-    setMessage('');
-    const response = await fetch(`${apiBaseUrl}/api/roles`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-
-    if (!response.ok) {
-      setMessage('Unable to load roles.');
-      return;
-    }
-
-    setRoles((await response.json()) as string[]);
-  }
+  const { roles, message, loadRoles } = useRoles(token);
 
   const roleDescriptions = useMemo(
     () => ({

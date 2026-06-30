@@ -1,8 +1,8 @@
-import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { ArrowLeft, Edit3, Save, UserPlus } from 'lucide-react';
-import { apiBaseUrl } from '../../config/api';
+import { FormEvent, useEffect, useState } from 'react';
 import type { Account } from '../../types/accounts';
 import type { SessionUser } from '../../types/auth';
+import { useAccounts } from './useAccounts';
 
 type AccountEditorMode =
   | { type: 'list' }
@@ -29,38 +29,23 @@ const emptyAccountForm: AccountFormState = {
 };
 
 export function AccountsView({ token, user }: AccountsViewProps) {
-  const [accounts, setAccounts] = useState<Account[]>([]);
-  const [message, setMessage] = useState('');
   const [mode, setMode] = useState<AccountEditorMode>({ type: 'list' });
   const [form, setForm] = useState(emptyAccountForm);
   const canManageAccounts = user.roles.includes('Admin');
-
-  const loadAccounts = useCallback(async () => {
-    setMessage('');
-    const response = await fetch(`${apiBaseUrl}/api/accounts`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-
-    if (!response.ok) {
-      setMessage('Unable to load accounts.');
-      return;
-    }
-
-    setAccounts((await response.json()) as Account[]);
-  }, [token]);
+  const { accounts, message, clearMessage, loadAccounts, createAccount, updateAccount } = useAccounts(token);
 
   useEffect(() => {
     void loadAccounts();
   }, [loadAccounts]);
 
   function openCreateAccount() {
-    setMessage('');
+    clearMessage();
     setForm(emptyAccountForm);
     setMode({ type: 'create' });
   }
 
   function openEditAccount(account: Account) {
-    setMessage('');
+    clearMessage();
     setForm({
       email: account.email,
       displayName: account.displayName,
@@ -71,69 +56,49 @@ export function AccountsView({ token, user }: AccountsViewProps) {
   }
 
   function closeEditor() {
-    setMessage('');
+    clearMessage();
     setMode({ type: 'list' });
   }
 
-  async function createAccount(event: FormEvent<HTMLFormElement>) {
+  async function handleCreateAccount(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setMessage('');
+    clearMessage();
 
-    const response = await fetch(`${apiBaseUrl}/api/accounts`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        email: form.email,
-        displayName: form.displayName,
-        password: form.password,
-        roles: [form.role],
-      }),
+    const created = await createAccount({
+      email: form.email,
+      displayName: form.displayName,
+      password: form.password,
+      roles: [form.role],
     });
 
-    if (!response.ok) {
-      setMessage('Unable to create the account.');
+    if (!created) {
       return;
     }
 
     setForm(emptyAccountForm);
-    setMessage('Account created.');
     setMode({ type: 'list' });
-    await loadAccounts();
   }
 
-  async function updateAccount(event: FormEvent<HTMLFormElement>) {
+  async function handleUpdateAccount(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     if (mode.type !== 'edit') {
       return;
     }
 
-    setMessage('');
+    clearMessage();
 
-    const response = await fetch(`${apiBaseUrl}/api/accounts/${mode.account.id}`, {
-      method: 'PUT',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        email: form.email,
-        displayName: form.displayName,
-        roles: [form.role],
-      }),
+    const updated = await updateAccount(mode.account.id, {
+      email: form.email,
+      displayName: form.displayName,
+      roles: [form.role],
     });
 
-    if (!response.ok) {
-      setMessage('Unable to update the account.');
+    if (!updated) {
       return;
     }
 
-    setMessage('Account updated.');
     setMode({ type: 'list' });
-    await loadAccounts();
   }
 
   if (mode.type !== 'list') {
@@ -152,7 +117,7 @@ export function AccountsView({ token, user }: AccountsViewProps) {
           </button>
         </div>
 
-        <form className="account-form account-editor-form" onSubmit={isCreateMode ? createAccount : updateAccount}>
+        <form className="account-form account-editor-form" onSubmit={isCreateMode ? handleCreateAccount : handleUpdateAccount}>
           <label>
             Email address
             <input

@@ -1,7 +1,7 @@
-import { FormEvent, useState } from 'react';
 import { LockKeyhole } from 'lucide-react';
-import { apiBaseUrl } from '../../config/api';
+import { FormEvent, useState } from 'react';
 import type { LoginResponse } from '../../types/auth';
+import { useLogin } from './useLogin';
 
 type LoginScreenProps = {
   onLogin: (session: LoginResponse) => void;
@@ -10,32 +10,16 @@ type LoginScreenProps = {
 export function LoginScreen({ onLogin }: LoginScreenProps) {
   const [email, setEmail] = useState('ml.development.2022@gmail.com');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { login, error, isLoading } = useLogin();
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setError('');
-    setIsSubmitting(true);
 
     try {
-      const response = await fetch(`${apiBaseUrl}/api/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-
-      if (!response.ok) {
-        setError('The email or password is incorrect.');
-        return;
-      }
-
-      const result = (await response.json()) as LoginResponse;
+      const result = await login(email, password);
       onLogin(result);
     } catch {
-      setError('Unable to reach the API.');
-    } finally {
-      setIsSubmitting(false);
+      // Error state is managed by the hook.
     }
   }
 
@@ -79,8 +63,8 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
 
           {error && <p className="form-error">{error}</p>}
 
-          <button className="primary-button" disabled={isSubmitting} type="submit">
-            {isSubmitting ? 'Signing in' : 'Sign in'}
+          <button className="primary-button" disabled={isLoading} type="submit">
+            {isLoading ? 'Signing in' : 'Sign in'}
           </button>
         </form>
       </section>
