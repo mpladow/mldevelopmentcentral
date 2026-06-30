@@ -4,26 +4,26 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using MldevDashboard.Api.Common;
 using MldevDashboard.Api.Features.Systems;
+using MldevDashboard.Api.Features.Systems.CreateSystem;
 using MldevDashboard.Infrastructure.Identity;
 using MldevDashboard.Infrastructure.Persistence;
 using MldevDashboard.Infrastructure.Systems;
 
 namespace MldevDashboard.Tests.Features.Systems;
 
-public sealed class SystemEndpointsTests
+public sealed class SystemHandlerTests
 {
     [Fact]
-    public async Task CreateSystemResultAsync_CreatesSystemWithGeneratedKeyAndAccountAccess()
+    public async Task CreateSystemHandler_CreatesSystemWithGeneratedKeyAndAccountAccess()
     {
         var services = CreateServices();
         var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
         var dbContext = services.GetRequiredService<MldevDashboardDbContext>();
         var account = await CreateUserAsync(userManager);
+        var handler = new CreateSystemHandler(dbContext, userManager);
 
-        var result = await SystemEndpoints.CreateSystemResultAsync(
+        var result = await handler.HandleAsync(
             new CreateSystemRequest("War Machine", [account.Id]),
-            dbContext,
-            userManager,
             CancellationToken.None);
 
         Assert.Equal(ApplicationResultStatus.Created, result.Status);
@@ -34,16 +34,15 @@ public sealed class SystemEndpointsTests
     }
 
     [Fact]
-    public async Task CreateSystemResultAsync_ReturnsBadRequestWhenAssignedAccountDoesNotExist()
+    public async Task CreateSystemHandler_ReturnsBadRequestWhenAssignedAccountDoesNotExist()
     {
         var services = CreateServices();
         var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
         var dbContext = services.GetRequiredService<MldevDashboardDbContext>();
+        var handler = new CreateSystemHandler(dbContext, userManager);
 
-        var result = await SystemEndpoints.CreateSystemResultAsync(
+        var result = await handler.HandleAsync(
             new CreateSystemRequest("War Machine", [Guid.NewGuid()]),
-            dbContext,
-            userManager,
             CancellationToken.None);
 
         Assert.Equal(ApplicationResultStatus.BadRequest, result.Status);
@@ -51,7 +50,7 @@ public sealed class SystemEndpointsTests
     }
 
     [Fact]
-    public async Task CreateSystemResultAsync_ReturnsConflictWhenGeneratedKeyAlreadyExists()
+    public async Task CreateSystemHandler_ReturnsConflictWhenGeneratedKeyAlreadyExists()
     {
         var services = CreateServices();
         var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
@@ -59,11 +58,10 @@ public sealed class SystemEndpointsTests
         var account = await CreateUserAsync(userManager);
         dbContext.Systems.Add(new SystemDefinition { SystemKey = "war-machine", Label = "War Machine" });
         await dbContext.SaveChangesAsync();
+        var handler = new CreateSystemHandler(dbContext, userManager);
 
-        var result = await SystemEndpoints.CreateSystemResultAsync(
+        var result = await handler.HandleAsync(
             new CreateSystemRequest("War Machine", [account.Id]),
-            dbContext,
-            userManager,
             CancellationToken.None);
 
         Assert.Equal(ApplicationResultStatus.Conflict, result.Status);

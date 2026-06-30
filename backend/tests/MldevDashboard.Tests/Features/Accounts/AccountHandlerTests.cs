@@ -3,28 +3,28 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using MldevDashboard.Api.Common;
-using MldevDashboard.Api.Features.Accounts;
+using MldevDashboard.Api.Features.Accounts.CreateAccount;
 using MldevDashboard.Infrastructure.Identity;
 using MldevDashboard.Infrastructure.Persistence;
 
 namespace MldevDashboard.Tests.Features.Accounts;
 
-public sealed class AccountEndpointsTests
+public sealed class AccountHandlerTests
 {
     [Fact]
-    public async Task CreateAccountResultAsync_CreatesUserWithRequestedRole()
+    public async Task CreateAccountHandler_CreatesUserWithRequestedRole()
     {
         var services = CreateServices();
         await SeedRolesAsync(services);
         var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
+        var handler = new CreateAccountHandler(userManager);
 
-        var result = await AccountEndpoints.CreateAccountResultAsync(
+        var result = await handler.HandleAsync(
             new CreateAccountRequest(
                 "user@example.com",
                 "User Example",
                 "Password1",
                 [ApplicationRoles.User]),
-            userManager,
             CancellationToken.None);
 
         Assert.Equal(ApplicationResultStatus.Created, result.Status);
@@ -38,18 +38,18 @@ public sealed class AccountEndpointsTests
     }
 
     [Fact]
-    public async Task CreateAccountResultAsync_ReturnsBadRequestForUnknownRole()
+    public async Task CreateAccountHandler_ReturnsBadRequestForUnknownRole()
     {
         var services = CreateServices();
         var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
+        var handler = new CreateAccountHandler(userManager);
 
-        var result = await AccountEndpoints.CreateAccountResultAsync(
+        var result = await handler.HandleAsync(
             new CreateAccountRequest(
                 "user@example.com",
                 "User Example",
                 "Password1",
                 ["Unknown"]),
-            userManager,
             CancellationToken.None);
 
         Assert.Equal(ApplicationResultStatus.BadRequest, result.Status);

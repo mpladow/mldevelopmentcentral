@@ -2,9 +2,19 @@ using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using MldevDashboard.Api.Features.Accounts;
+using MldevDashboard.Api.Features.Accounts.CreateAccount;
+using MldevDashboard.Api.Features.Accounts.ListAccounts;
+using MldevDashboard.Api.Features.Accounts.UpdateAccount;
 using MldevDashboard.Api.Features.Auth;
+using MldevDashboard.Api.Features.Auth.GetCurrentUser;
+using MldevDashboard.Api.Features.Auth.Login;
 using MldevDashboard.Api.Features.Roles;
+using MldevDashboard.Api.Features.Roles.ListRoles;
 using MldevDashboard.Api.Features.Systems;
+using MldevDashboard.Api.Features.Systems.CreateSystem;
+using MldevDashboard.Api.Features.Systems.ListAvailableSystems;
+using MldevDashboard.Api.Features.Systems.ListSystems;
+using MldevDashboard.Api.Features.Systems.UpdateSystem;
 using MldevDashboard.Api.Identity;
 using MldevDashboard.Infrastructure;
 using MldevDashboard.Infrastructure.Identity;
@@ -30,6 +40,16 @@ builder.Services.AddCors(options =>
 });
 
 builder.Services.AddScoped<JwtTokenService>();
+builder.Services.AddScoped<ListAccountsHandler>();
+builder.Services.AddScoped<CreateAccountHandler>();
+builder.Services.AddScoped<UpdateAccountHandler>();
+builder.Services.AddScoped<LoginHandler>();
+builder.Services.AddScoped<GetCurrentUserHandler>();
+builder.Services.AddScoped<ListRolesHandler>();
+builder.Services.AddScoped<ListAvailableSystemsHandler>();
+builder.Services.AddScoped<ListSystemsHandler>();
+builder.Services.AddScoped<CreateSystemHandler>();
+builder.Services.AddScoped<UpdateSystemHandler>();
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection(JwtOptions.SectionName));
 
 var jwtOptions = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>()

@@ -1,4 +1,5 @@
 using MldevDashboard.Api.Common;
+using MldevDashboard.Api.Features.Roles.ListRoles;
 
 namespace MldevDashboard.Api.Features.Roles;
 
@@ -10,7 +11,7 @@ public static class RoleEndpoints
             .WithTags("Roles")
             .RequireAuthorization(policy => policy.RequireRole(ApplicationRoles.Admin));
 
-        group.MapGet("/", () => Results.Ok(ApplicationRoles.All));
+        group.MapGet("/", ListRolesEndpoint.Handle);
 
         return app;
     }
