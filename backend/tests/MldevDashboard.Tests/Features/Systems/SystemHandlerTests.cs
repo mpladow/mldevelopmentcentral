@@ -1,0 +1,111 @@
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using MldevDashboard.Api.Common;
+using MldevDashboard.Api.Features.Systems;
+using MldevDashboard.Api.Features.Systems.CreateSystem;
+using MldevDashboard.Infrastructure.Identity;
+using MldevDashboard.Infrastructure.Persistence;
+using MldevDashboard.Infrastructure.Systems;
+
+namespace MldevDashboard.Tests.Features.Systems;
+
+public sealed class SystemHandlerTests
+{
+    [Fact]
+    public async Task CreateSystemHandler_CreatesSystemWithGeneratedKeyAndAccountAccess()
+    {
+        var services = CreateServices();
+        var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
+        var dbContext = services.GetRequiredService<MldevDashboardDbContext>();
+        var account = await CreateUserAsync(userManager);
+        var handler = new CreateSystemHandler(dbContext, userManager);
+
+        var result = await handler.HandleAsync(
+            new CreateSystemRequest("War Machine", [account.Id]),
+            CancellationToken.None);
+
+        Assert.Equal(ApplicationResultStatus.Created, result.Status);
+        Assert.NotNull(result.Value);
+        Assert.Equal("war-machine", result.Value.SystemKey);
+        Assert.Single(result.Value.Accounts);
+        Assert.True(await dbContext.SystemAccountAccesses.AnyAsync(access => access.AccountId == account.Id));
+    }
+
+    [Fact]
+    public async Task CreateSystemHandler_ReturnsBadRequestWhenAssignedAccountDoesNotExist()
+    {
+        var services = CreateServices();
+        var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
+        var dbContext = services.GetRequiredService<MldevDashboardDbContext>();
+        var handler = new CreateSystemHandler(dbContext, userManager);
+
+        var result = await handler.HandleAsync(
+            new CreateSystemRequest("War Machine", [Guid.NewGuid()]),
+            CancellationToken.None);
+
+        Assert.Equal(ApplicationResultStatus.BadRequest, result.Status);
+        Assert.Equal("One or more assigned accounts do not exist.", result.Message);
+    }
+
+    [Fact]
+    public async Task CreateSystemHandler_ReturnsConflictWhenGeneratedKeyAlreadyExists()
+    {
+        var services = CreateServices();
+        var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
+        var dbContext = services.GetRequiredService<MldevDashboardDbContext>();
+        var account = await CreateUserAsync(userManager);
+        dbContext.Systems.Add(new SystemDefinition { SystemKey = "war-machine", Label = "War Machine" });
+        await dbContext.SaveChangesAsync();
+        var handler = new CreateSystemHandler(dbContext, userManager);
+
+        var result = await handler.HandleAsync(
+            new CreateSystemRequest("War Machine", [account.Id]),
+            CancellationToken.None);
+
+        Assert.Equal(ApplicationResultStatus.Conflict, result.Status);
+        Assert.Equal("A system already exists with this name.", result.Message);
+    }
+
+    private static ServiceProvider CreateServices()
+    {
+        var services = new ServiceCollection();
+        var databaseName = Guid.NewGuid().ToString();
+
+        services.AddLogging(builder => builder.AddDebug());
+        services.AddDbContext<MldevDashboardDbContext>(options =>
+            options.UseInMemoryDatabase(databaseName));
+
+        services
+            .AddIdentityCore<ApplicationUser>(options =>
+            {
+                options.User.RequireUniqueEmail = true;
+                options.Password.RequiredLength = 8;
+                options.Password.RequireDigit = true;
+                options.Password.RequireLowercase = true;
+                options.Password.RequireUppercase = false;
+                options.Password.RequireNonAlphanumeric = false;
+            })
+            .AddRoles<IdentityRole<Guid>>()
+            .AddEntityFrameworkStores<MldevDashboardDbContext>();
+
+        return services.BuildServiceProvider();
+    }
+
+    private static async Task<ApplicationUser> CreateUserAsync(UserManager<ApplicationUser> userManager)
+    {
+        var user = new ApplicationUser
+        {
+            UserName = "user@example.com",
+            Email = "user@example.com",
+            EmailConfirmed = true,
+            DisplayName = "User Example"
+        };
+
+        var result = await userManager.CreateAsync(user, "Password1");
+        Assert.True(result.Succeeded);
+
+        return user;
+    }
+}
