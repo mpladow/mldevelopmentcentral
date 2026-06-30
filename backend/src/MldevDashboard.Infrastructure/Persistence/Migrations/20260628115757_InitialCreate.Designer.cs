@@ -24,7 +24,7 @@ namespace MldevDashboard.Infrastructure.Persistence.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
-            modelBuilder.Entity("MldevDashboard.Domain.Systems.SystemDefinition", b =>
+            modelBuilder.Entity("MldevDashboard.Infrastructure.Systems.SystemDefinition", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()

@@ -156,7 +156,7 @@ namespace MldevDashboard.Infrastructure.Persistence.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
-            modelBuilder.Entity("MldevDashboard.Domain.Systems.SystemDefinition", b =>
+            modelBuilder.Entity("MldevDashboard.Infrastructure.Systems.SystemDefinition", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()

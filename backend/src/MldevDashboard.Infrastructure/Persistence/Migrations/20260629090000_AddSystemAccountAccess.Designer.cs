@@ -156,7 +156,7 @@ namespace MldevDashboard.Infrastructure.Persistence.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
-            modelBuilder.Entity("MldevDashboard.Domain.Systems.SystemDefinition", b =>
+            modelBuilder.Entity("MldevDashboard.Infrastructure.Systems.SystemDefinition", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -190,7 +190,7 @@ namespace MldevDashboard.Infrastructure.Persistence.Migrations
                     b.ToTable("Systems", (string)null);
                 });
 
-            modelBuilder.Entity("MldevDashboard.Domain.Systems.SystemAccountAccess", b =>
+            modelBuilder.Entity("MldevDashboard.Infrastructure.Systems.SystemAccountAccess", b =>
                 {
                     b.Property<int>("SystemDefinitionId")
                         .HasColumnType("int");
@@ -326,9 +326,9 @@ namespace MldevDashboard.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("MldevDashboard.Domain.Systems.SystemAccountAccess", b =>
+            modelBuilder.Entity("MldevDashboard.Infrastructure.Systems.SystemAccountAccess", b =>
                 {
-                    b.HasOne("MldevDashboard.Domain.Systems.SystemDefinition", "SystemDefinition")
+                    b.HasOne("MldevDashboard.Infrastructure.Systems.SystemDefinition", "SystemDefinition")
                         .WithMany("AccountAccesses")
                         .HasForeignKey("SystemDefinitionId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -337,7 +337,7 @@ namespace MldevDashboard.Infrastructure.Persistence.Migrations
                     b.Navigation("SystemDefinition");
                 });
 
-            modelBuilder.Entity("MldevDashboard.Domain.Systems.SystemDefinition", b =>
+            modelBuilder.Entity("MldevDashboard.Infrastructure.Systems.SystemDefinition", b =>
                 {
                     b.Navigation("AccountAccesses");
                 });

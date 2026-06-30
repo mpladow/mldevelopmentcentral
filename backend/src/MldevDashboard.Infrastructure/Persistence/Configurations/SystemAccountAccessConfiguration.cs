@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using MldevDashboard.Domain.Systems;
+using MldevDashboard.Infrastructure.Systems;
 
 namespace MldevDashboard.Infrastructure.Persistence.Configurations;
 

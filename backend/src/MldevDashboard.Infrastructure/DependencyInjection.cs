@@ -2,12 +2,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
-using MldevDashboard.Application.Accounts;
-using MldevDashboard.Application.Systems;
-using MldevDashboard.Infrastructure.Accounts;
 using MldevDashboard.Infrastructure.Identity;
 using MldevDashboard.Infrastructure.Persistence;
-using MldevDashboard.Infrastructure.Systems;
 
 namespace MldevDashboard.Infrastructure;
 
@@ -32,11 +28,6 @@ public static class DependencyInjection
             })
             .AddRoles<IdentityRole<Guid>>()
             .AddEntityFrameworkStores<MldevDashboardDbContext>();
-
-        services.AddScoped<IAccountService, IdentityAccountService>();
-        services.AddScoped<ISystemService, SystemService>();
-        services.AddScoped<ISystemRepository, EfSystemRepository>();
-        services.AddScoped<ISystemAccountLookup, IdentitySystemAccountLookup>();
 
         return services;
     }

@@ -1,9 +1,11 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
-using MldevDashboard.Api.Endpoints;
+using MldevDashboard.Api.Features.Accounts;
+using MldevDashboard.Api.Features.Auth;
+using MldevDashboard.Api.Features.Roles;
+using MldevDashboard.Api.Features.Systems;
 using MldevDashboard.Api.Identity;
-using MldevDashboard.Application;
 using MldevDashboard.Infrastructure;
 using MldevDashboard.Infrastructure.Identity;
 using MldevDashboard.Infrastructure.Persistence;
@@ -11,7 +13,6 @@ using MldevDashboard.Infrastructure.Persistence;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services
-    .AddApplication()
     .AddInfrastructure(builder.Configuration);
 
 builder.Services.AddCors(options =>

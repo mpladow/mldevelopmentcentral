@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
-using MldevDashboard.Domain.Systems;
 using MldevDashboard.Infrastructure.Identity;
+using MldevDashboard.Infrastructure.Systems;
 
 namespace MldevDashboard.Infrastructure.Persistence;
 
