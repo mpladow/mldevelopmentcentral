@@ -93,7 +93,7 @@ export function SystemsView({ onSystemsChanged, token }: SystemsViewProps) {
           </button>
         </div>
 
-        <form className="account-form system-editor-form" onSubmit={saveSystem}>
+        <form className="account-form system-editor-form" onSubmit={saveSystemHandler}>
           <label>
             System name
             <input
