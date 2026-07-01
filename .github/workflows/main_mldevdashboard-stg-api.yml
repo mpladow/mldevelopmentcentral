@@ -32,6 +32,18 @@ jobs:
       - name: Test
         run: dotnet test backend/MldevDashboard.sln --configuration Release --no-build
 
+      - name: Install EF Core tools
+        run: dotnet tool install --global dotnet-ef --version 8.*
+
+      - name: Generate database migration script
+        run: |
+          mkdir -p ./database
+          dotnet ef migrations script --idempotent \
+            --project backend/src/MldevDashboard.Infrastructure/MldevDashboard.Infrastructure.csproj \
+            --startup-project backend/src/MldevDashboard.Api/MldevDashboard.Api.csproj \
+            --context MldevDashboardDbContext \
+            --output ./database/migrations.sql
+
       - name: Publish
         run: dotnet publish backend/src/MldevDashboard.Api/MldevDashboard.Api.csproj --configuration Release --output ./publish
 
@@ -40,6 +52,12 @@ jobs:
         with:
           name: .net-app
           path: ./publish
+
+      - name: Upload database migration artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-migrations
+          path: ./database/migrations.sql
 
   deploy:
     runs-on: ubuntu-latest
@@ -54,6 +72,12 @@ jobs:
         with:
           name: .net-app
           path: ./publish
+
+      - name: Download database migration artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: db-migrations
+          path: ./database
       
       - name: Login to Azure
         uses: azure/login@v2
