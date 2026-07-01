@@ -86,6 +86,20 @@ jobs:
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_E587DB221B8B4E959AB9F79E0B5FA366 }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_4335591E99ED4A9596189A03AD1481C2 }}
 
+      - name: Apply database migrations
+        uses: azure/sql-action@v2.3
+        with:
+          connection-string: >-
+            Server=tcp:${{ secrets.AZURE_SQL_SERVER }},1433;
+            Initial Catalog=${{ secrets.AZURE_SQL_DATABASE }};
+            Authentication=Active Directory Service Principal;
+            User ID=${{ secrets.AZURE_SQL_CLIENT_ID }};
+            Password=${{ secrets.AZURE_SQL_CLIENT_SECRET }};
+            Encrypt=True;
+            TrustServerCertificate=False;
+            Connection Timeout=30;
+          path: ./database/migrations.sql
+
       - name: Deploy to Azure Web App
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
