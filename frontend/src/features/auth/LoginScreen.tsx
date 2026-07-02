@@ -1,15 +1,12 @@
 import { LockKeyhole } from 'lucide-react';
 import { FormEvent, useState } from 'react';
-import type { LoginResponse } from '../../types/auth';
+import { useAuth } from './AuthContext';
 import { useLogin } from './useLogin';
 
-type LoginScreenProps = {
-  onLogin: (session: LoginResponse) => void;
-};
-
-export function LoginScreen({ onLogin }: LoginScreenProps) {
+export function LoginScreen() {
   const [email, setEmail] = useState('ml.development.2022@gmail.com');
   const [password, setPassword] = useState('');
+  const { login: completeLogin } = useAuth();
   const { login, error, isLoading } = useLogin();
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -17,7 +14,7 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
 
     try {
       const result = await login(email, password);
-      onLogin(result);
+      completeLogin(result);
     } catch {
       // Error state is managed by the hook.
     }

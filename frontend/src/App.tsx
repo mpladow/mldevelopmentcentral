@@ -1,14 +1,17 @@
-import { useState } from 'react';
+import { AuthProvider, useAuth } from './features/auth/AuthContext';
 import { LoginScreen } from './features/auth/LoginScreen';
 import { DashboardShell } from './layout/DashboardShell';
-import type { LoginResponse } from './types/auth';
 
 export function App() {
-  const [session, setSession] = useState<LoginResponse | null>(null);
+  return (
+    <AuthProvider>
+      <AuthenticatedApp />
+    </AuthProvider>
+  );
+}
 
-  if (!session) {
-    return <LoginScreen onLogin={setSession} />;
-  }
+function AuthenticatedApp() {
+  const { isAuthenticated } = useAuth();
 
-  return <DashboardShell session={session} onLogout={() => setSession(null)} />;
+  return isAuthenticated ? <DashboardShell /> : <LoginScreen />;
 }

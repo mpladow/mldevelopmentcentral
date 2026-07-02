@@ -1,34 +1,30 @@
 import { useEffect, useState } from 'react';
 import { Bell, CircleUserRound, LogOut, Menu, Search, Settings } from 'lucide-react';
 import { apiBaseUrl } from '../config/api';
-import type { SessionUser } from '../types/auth';
+import { useAuthenticatedSession, useAuth } from '../features/auth/AuthContext';
 import type { AvailableSystem } from '../types/systems';
 import { getInitials } from '../utils/getInitials';
 
 type TopBarProps = {
   isSidebarCollapsed: boolean;
-  onLogout: () => void;
   onToggleSidebar: () => void;
   systemListVersion: number;
-  token: string;
-  user: SessionUser;
 };
 
 export function TopBar({
   isSidebarCollapsed,
-  onLogout,
   onToggleSidebar,
   systemListVersion,
-  token,
-  user,
 }: TopBarProps) {
+  const { accessToken, user } = useAuthenticatedSession();
+  const { logout } = useAuth();
   const [availableSystems, setAvailableSystems] = useState<AvailableSystem[]>([]);
   const [selectedSystemKey, setSelectedSystemKey] = useState('');
 
   useEffect(() => {
     async function loadAvailableSystems() {
       const response = await fetch(`${apiBaseUrl}/api/systems/available`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${accessToken}` },
       });
 
       if (!response.ok) {
@@ -43,7 +39,7 @@ export function TopBar({
     }
 
     void loadAvailableSystems();
-  }, [systemListVersion, token]);
+  }, [accessToken, systemListVersion]);
 
   return (
     <header className="topbar">
@@ -88,7 +84,7 @@ export function TopBar({
           <CircleUserRound size={20} />
           <span>{getInitials(user.displayName || user.email)}</span>
         </div>
-        <button className="icon-button" onClick={onLogout} type="button" aria-label="Sign out">
+        <button className="icon-button" onClick={logout} type="button" aria-label="Sign out">
           <LogOut size={18} />
         </button>
       </div>
