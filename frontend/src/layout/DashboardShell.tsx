@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { AccountsView } from '../features/accounts/AccountsView';
+import { useAuthenticatedSession } from '../features/auth/AuthContext';
 import { RolesView } from '../features/roles/RolesView';
 import { SystemsView } from '../features/systems/SystemsView';
-import type { LoginResponse } from '../types/auth';
 import type { ActiveView } from '../types/navigation';
 import { DashboardHeader } from './DashboardHeader';
 import { Sidebar } from './Sidebar';
@@ -10,12 +10,8 @@ import { TopBar } from './TopBar';
 
 const sidebarCollapseBreakpoint = 920;
 
-type DashboardShellProps = {
-  session: LoginResponse;
-  onLogout: () => void;
-};
-
-export function DashboardShell({ session, onLogout }: DashboardShellProps) {
+export function DashboardShell() {
+  const session = useAuthenticatedSession();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [activeView, setActiveView] = useState<ActiveView>('accounts');
   const [systemListVersion, setSystemListVersion] = useState(0);
@@ -43,11 +39,8 @@ export function DashboardShell({ session, onLogout }: DashboardShellProps) {
       <section className="main-area">
         <TopBar
           isSidebarCollapsed={isSidebarCollapsed}
-          onLogout={onLogout}
           onToggleSidebar={() => setIsSidebarCollapsed((value) => !value)}
           systemListVersion={systemListVersion}
-          token={session.accessToken}
-          user={session.user}
         />
         <DashboardHeader activeView={activeView} />
 

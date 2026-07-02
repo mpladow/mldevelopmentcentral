@@ -5,7 +5,7 @@ import { App } from './App';
 
 const loginResponse = {
   accessToken: 'test-token',
-  expiresAt: '2026-06-29T00:00:00Z',
+  expiresAt: '2099-06-29T00:00:00Z',
   user: {
     id: '3b9cda16-bc2f-4e18-a6f2-56ebdd50beef',
     email: 'ml.development.2022@gmail.com',
@@ -57,11 +57,13 @@ const availableSystemsResponse = [
 describe('App', () => {
   beforeEach(() => {
     vi.stubGlobal('fetch', vi.fn());
+    window.localStorage.clear();
     setViewportWidth(1280);
   });
 
   afterEach(() => {
     cleanup();
+    window.localStorage.clear();
     vi.unstubAllGlobals();
   });
 
@@ -88,6 +90,44 @@ describe('App', () => {
     expect(screen.getByRole('button', { name: /accounts/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /roles/i })).toBeInTheDocument();
     expect(screen.getByLabelText(/select system/i)).toHaveValue('Global');
+  });
+
+  it('restores an unexpired session after a page refresh', async () => {
+    window.localStorage.setItem('mldev-dashboard.auth-session', JSON.stringify(loginResponse));
+    mockAuthenticatedRequests();
+
+    render(<App />);
+
+    expect(await screen.findByRole('heading', { level: 1, name: /accounts/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /sign in/i })).not.toBeInTheDocument();
+  });
+
+  it('clears an expired stored session and shows login', () => {
+    window.localStorage.setItem(
+      'mldev-dashboard.auth-session',
+      JSON.stringify({ ...loginResponse, expiresAt: '2000-01-01T00:00:00Z' }),
+    );
+
+    render(<App />);
+
+    expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument();
+    expect(window.localStorage.getItem('mldev-dashboard.auth-session')).toBeNull();
+  });
+
+  it('persists the session after login and clears it on logout', async () => {
+    mockLogin(loginResponse);
+
+    render(<App />);
+
+    await signIn();
+    await screen.findByRole('heading', { level: 1, name: /accounts/i });
+
+    expect(window.localStorage.getItem('mldev-dashboard.auth-session')).toBe(JSON.stringify(loginResponse));
+
+    await userEvent.click(screen.getByRole('button', { name: /sign out/i }));
+
+    expect(window.localStorage.getItem('mldev-dashboard.auth-session')).toBeNull();
+    expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument();
   });
 
   it('can navigate to Roles and collapse the sidebar from the header menu', async () => {
@@ -215,6 +255,36 @@ function mockLogin(response: typeof loginResponse) {
       new Response(JSON.stringify(response), {
         status: 404,
         headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+  });
+}
+
+function mockAuthenticatedRequests() {
+  vi.mocked(fetch).mockImplementation((input) => {
+    const url = input.toString();
+
+    if (url.endsWith('/api/systems/available')) {
+      return Promise.resolve(
+        new Response(JSON.stringify(availableSystemsResponse), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
+    }
+
+    if (url.endsWith('/api/accounts')) {
+      return Promise.resolve(
+        new Response(JSON.stringify(accountsResponse), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
+    }
+
+    return Promise.resolve(
+      new Response(null, {
+        status: 404,
       }),
     );
   });
