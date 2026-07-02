@@ -1,3 +1,4 @@
+import { Alert, Box, Button, Card, CardContent, Stack, Typography } from '@mui/material';
 import { ShieldCheck } from 'lucide-react';
 import { useMemo } from 'react';
 import { useRoles } from './useRoles';
@@ -19,26 +20,38 @@ export function RolesView({ token }: RolesViewProps) {
   );
 
   return (
-    <section className="panel roles-panel">
-      <div className="panel-heading">
-        <div>
-          <h2>Roles</h2>
-          <p>Initial Global permission groups.</p>
-        </div>
-        <button className="secondary-button" onClick={loadRoles} type="button">Refresh</button>
-      </div>
+    <Box component="section" sx={{ display: 'grid', gap: 2.5 }}>
+      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ alignItems: 'flex-start', justifyContent: 'space-between' }}>
+        <Box>
+          <Typography component="h2" variant="h2">Roles</Typography>
+          <Typography color="text.secondary">Initial Global permission groups.</Typography>
+        </Box>
+        <Button onClick={loadRoles} type="button" variant="outlined">Refresh</Button>
+      </Stack>
 
-      {message && <p className="form-note">{message}</p>}
+      {message && <Alert severity="info">{message}</Alert>}
 
-      <div className="role-grid">
+      <Box
+        sx={{
+          display: 'grid',
+          gap: 2,
+          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+        }}
+      >
         {(roles.length > 0 ? roles : ['Admin', 'User', 'Viewer']).map((role) => (
-          <article className="role-card" key={role}>
-            <ShieldCheck size={22} />
-            <strong>{role}</strong>
-            <p>{roleDescriptions[role as keyof typeof roleDescriptions]}</p>
-          </article>
+          <Card key={role} variant="outlined">
+            <CardContent sx={{ display: 'grid', gap: 1.25 }}>
+              <Box sx={{ color: 'primary.main' }}>
+                <ShieldCheck size={24} />
+              </Box>
+              <Typography component="strong" sx={{ fontWeight: 900 }}>{role}</Typography>
+              <Typography color="text.secondary">
+                {roleDescriptions[role as keyof typeof roleDescriptions]}
+              </Typography>
+            </CardContent>
+          </Card>
         ))}
-      </div>
-    </section>
+      </Box>
+    </Box>
   );
 }

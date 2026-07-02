@@ -16,7 +16,16 @@ public sealed class CreateSystemHandler(
         CancellationToken cancellationToken)
     {
         var label = request.Label.Trim();
-        var accountIds = request.AccountIds.Distinct().ToArray();
+        var accountAssignments = (request.Accounts ?? [])
+            .Select(account => new SystemAccountAssignmentRequest(account.AccountId, NormalizeRole(account.Role)))
+            .DistinctBy(account => account.AccountId)
+            .ToArray();
+        if (accountAssignments.Any(account => string.IsNullOrWhiteSpace(account.Role)))
+        {
+            return ApplicationResult<SystemResponse>.BadRequest("One or more assigned account roles are invalid.");
+        }
+
+        var accountIds = accountAssignments.Select(account => account.AccountId).ToArray();
         if (!await AllAccountsExistAsync(accountIds, cancellationToken))
         {
             return ApplicationResult<SystemResponse>.BadRequest("One or more assigned accounts do not exist.");
@@ -37,8 +46,12 @@ public sealed class CreateSystemHandler(
             Label = label,
             SystemKey = systemKey,
             SortOrder = currentMaxSortOrder + 1,
-            AccountAccesses = accountIds
-                .Select(accountId => new SystemAccountAccess { AccountId = accountId })
+            AccountAccesses = accountAssignments
+                .Select(account => new SystemAccountAccess
+                {
+                    AccountId = account.AccountId,
+                    Role = account.Role
+                })
                 .ToList()
         };
 
@@ -74,5 +87,13 @@ public sealed class CreateSystemHandler(
             new string(keyCharacters).Split('-', StringSplitOptions.RemoveEmptyEntries));
 
         return string.IsNullOrWhiteSpace(key) ? "system" : key;
+    }
+
+    private static string NormalizeRole(string role)
+    {
+        var requestedRole = role?.Trim() ?? string.Empty;
+
+        return ApplicationRoles.All.FirstOrDefault(
+            validRole => string.Equals(validRole, requestedRole, StringComparison.OrdinalIgnoreCase)) ?? string.Empty;
     }
 }

@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using MldevDashboard.Infrastructure.Persistence;
 
@@ -11,9 +12,11 @@ using MldevDashboard.Infrastructure.Persistence;
 namespace MldevDashboard.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(MldevDashboardDbContext))]
-    partial class MldevDashboardDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260702070359_AddSystemAccountAccessRole")]
+    partial class AddSystemAccountAccessRole
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -277,44 +280,6 @@ namespace MldevDashboard.Infrastructure.Persistence.Migrations
                     b.ToTable("Systems", (string)null);
                 });
 
-            modelBuilder.Entity("MldevDashboard.Infrastructure.Systems.SystemThemeSettings", b =>
-                {
-                    b.Property<int>("SystemDefinitionId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("BackgroundColor")
-                        .IsRequired()
-                        .HasMaxLength(16)
-                        .HasColumnType("nvarchar(16)");
-
-                    b.Property<int>("BorderRadius")
-                        .HasColumnType("int");
-
-                    b.Property<string>("PrimaryColor")
-                        .IsRequired()
-                        .HasMaxLength(16)
-                        .HasColumnType("nvarchar(16)");
-
-                    b.Property<string>("SecondaryColor")
-                        .IsRequired()
-                        .HasMaxLength(16)
-                        .HasColumnType("nvarchar(16)");
-
-                    b.Property<string>("SurfaceColor")
-                        .IsRequired()
-                        .HasMaxLength(16)
-                        .HasColumnType("nvarchar(16)");
-
-                    b.Property<string>("TextColor")
-                        .IsRequired()
-                        .HasMaxLength(16)
-                        .HasColumnType("nvarchar(16)");
-
-                    b.HasKey("SystemDefinitionId");
-
-                    b.ToTable("SystemThemeSettings", (string)null);
-                });
-
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
                 {
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole<System.Guid>", null)
@@ -377,22 +342,9 @@ namespace MldevDashboard.Infrastructure.Persistence.Migrations
                     b.Navigation("SystemDefinition");
                 });
 
-            modelBuilder.Entity("MldevDashboard.Infrastructure.Systems.SystemThemeSettings", b =>
-                {
-                    b.HasOne("MldevDashboard.Infrastructure.Systems.SystemDefinition", "SystemDefinition")
-                        .WithOne("ThemeSettings")
-                        .HasForeignKey("MldevDashboard.Infrastructure.Systems.SystemThemeSettings", "SystemDefinitionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("SystemDefinition");
-                });
-
             modelBuilder.Entity("MldevDashboard.Infrastructure.Systems.SystemDefinition", b =>
                 {
                     b.Navigation("AccountAccesses");
-
-                    b.Navigation("ThemeSettings");
                 });
 #pragma warning restore 612, 618
         }

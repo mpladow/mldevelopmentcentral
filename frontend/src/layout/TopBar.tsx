@@ -1,3 +1,15 @@
+import {
+  AppBar,
+  Avatar,
+  Box,
+  FormControl,
+  IconButton,
+  InputAdornment,
+  NativeSelect,
+  TextField,
+  Toolbar,
+  Tooltip,
+} from '@mui/material';
 import { useEffect, useState } from 'react';
 import { Bell, CircleUserRound, LogOut, Menu, Search, Settings } from 'lucide-react';
 import { apiBaseUrl } from '../config/api';
@@ -42,52 +54,81 @@ export function TopBar({
   }, [accessToken, systemListVersion]);
 
   return (
-    <header className="topbar">
-      <button
-        aria-expanded={!isSidebarCollapsed}
-        aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        className="icon-button"
-        onClick={onToggleSidebar}
-        type="button"
-      >
-        <Menu size={20} />
-      </button>
+    <AppBar color="inherit" elevation={0} position="sticky" sx={{ borderBottom: '1px solid', borderColor: 'divider' }}>
+      <Toolbar sx={{ gap: 1.5, minHeight: 72, px: { xs: 2, md: 3 } }}>
+        <Tooltip title={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
+          <IconButton
+            aria-expanded={!isSidebarCollapsed}
+            aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            onClick={onToggleSidebar}
+          >
+            <Menu size={20} />
+          </IconButton>
+        </Tooltip>
 
-      <label className="search-box">
-        <Search size={17} />
-        <input aria-label="Search" placeholder="Search" type="search" />
-      </label>
+        <TextField
+          aria-label="Search"
+          placeholder="Search"
+          size="small"
+          slotProps={{
+            input: {
+              startAdornment: (
+                <InputAdornment position="start">
+                  <Search size={17} />
+                </InputAdornment>
+              ),
+            },
+          }}
+          sx={{
+            display: { xs: 'none', sm: 'block' },
+            maxWidth: 380,
+            width: '32vw',
+          }}
+          type="search"
+        />
 
-      <div className="topbar-actions">
-        <select
-          aria-label="Select system"
-          onChange={(event) => setSelectedSystemKey(event.target.value)}
-          value={selectedSystemKey}
-        >
-          {availableSystems.length === 0 ? (
-            <option value="">No systems</option>
-          ) : (
-            availableSystems.map((system) => (
-              <option key={system.id} value={system.systemKey}>
-                {system.label}
-              </option>
-            ))
-          )}
-        </select>
-        <button className="icon-button" type="button" aria-label="Notifications">
-          <Bell size={18} />
-        </button>
-        <button className="icon-button" type="button" aria-label="Settings">
-          <Settings size={18} />
-        </button>
-        <div className="profile-chip">
-          <CircleUserRound size={20} />
-          <span>{getInitials(user.displayName || user.email)}</span>
-        </div>
-        <button className="icon-button" onClick={logout} type="button" aria-label="Sign out">
-          <LogOut size={18} />
-        </button>
-      </div>
-    </header>
+        <Box sx={{ flex: 1 }} />
+
+        <FormControl size="small" sx={{ minWidth: { xs: 132, sm: 180 } }}>
+          <NativeSelect
+            inputProps={{ 'aria-label': 'Select system' }}
+            onChange={(event) => setSelectedSystemKey(event.target.value)}
+            value={selectedSystemKey}
+          >
+            {availableSystems.length === 0 ? (
+              <option value="">No systems</option>
+            ) : (
+              availableSystems.map((system) => (
+                <option key={system.id} value={system.systemKey}>
+                  {system.label}
+                </option>
+              ))
+            )}
+          </NativeSelect>
+        </FormControl>
+
+        <Tooltip title="Notifications">
+          <IconButton aria-label="Notifications">
+            <Bell size={18} />
+          </IconButton>
+        </Tooltip>
+        <Tooltip title="Settings">
+          <IconButton aria-label="Settings">
+            <Settings size={18} />
+          </IconButton>
+        </Tooltip>
+        <Avatar sx={{ display: { xs: 'none', sm: 'flex' }, bgcolor: '#eef2ff', color: 'primary.main', fontWeight: 900 }}>
+          <CircleUserRound size={18} />
+          <Box component="span" sx={{ ml: 0.5, fontSize: '0.78rem' }}>
+            {getInitials(user.displayName || user.email)}
+          </Box>
+        </Avatar>
+        <Tooltip title="Sign out">
+          <IconButton aria-label="Sign out" onClick={logout}>
+            <LogOut size={18} />
+          </IconButton>
+        </Tooltip>
+      </Toolbar>
+    </AppBar>
   );
 }

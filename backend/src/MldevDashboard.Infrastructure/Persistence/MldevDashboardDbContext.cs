@@ -13,6 +13,8 @@ public sealed class MldevDashboardDbContext(DbContextOptions<MldevDashboardDbCon
 
     public DbSet<SystemAccountAccess> SystemAccountAccesses => Set<SystemAccountAccess>();
 
+    public DbSet<SystemThemeSettings> SystemThemeSettings => Set<SystemThemeSettings>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

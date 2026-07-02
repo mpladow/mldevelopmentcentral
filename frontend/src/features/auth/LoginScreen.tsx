@@ -1,3 +1,4 @@
+import { Alert, Avatar, Box, Button, Paper, Stack, TextField, Typography } from '@mui/material';
 import { LockKeyhole } from 'lucide-react';
 import { FormEvent, useState } from 'react';
 import { useAuth } from './AuthContext';
@@ -21,50 +22,65 @@ export function LoginScreen() {
   }
 
   return (
-    <main className="login-page">
-      <section className="login-panel" aria-label="Login">
-        <div className="login-brand">
-          <span className="brand-icon" aria-hidden="true">
-            <LockKeyhole size={22} />
-          </span>
-          <div>
-            <p className="eyebrow">Global</p>
-            <h1>ML Dev Dashboard</h1>
-          </div>
-        </div>
+    <Box
+      component="main"
+      sx={{
+        alignItems: 'center',
+        bgcolor: 'background.default',
+        display: 'grid',
+        minHeight: '100vh',
+        p: 2,
+      }}
+    >
+      <Paper
+        aria-label="Login"
+        component="section"
+        elevation={0}
+        sx={{ justifySelf: 'center', maxWidth: 460, p: { xs: 3, sm: 4 }, width: '100%' }}
+        variant="outlined"
+      >
+        <Stack spacing={3}>
+          <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
+            <Avatar sx={{ bgcolor: 'primary.main' }}>
+              <LockKeyhole size={22} />
+            </Avatar>
+            <Box>
+              <Typography color="primary" sx={{ fontWeight: 900, textTransform: 'uppercase' }} variant="caption">
+                Global
+              </Typography>
+              <Typography component="h1" variant="h1">ML Dev Dashboard</Typography>
+            </Box>
+          </Stack>
 
-        <form className="login-form" onSubmit={handleSubmit}>
-          <label>
-            Email address
-            <input
+          <Box component="form" onSubmit={handleSubmit} sx={{ display: 'grid', gap: 2 }}>
+            <TextField
               autoComplete="email"
+              label="Email address"
               name="email"
               onChange={(event) => setEmail(event.target.value)}
               required
               type="email"
               value={email}
             />
-          </label>
 
-          <label>
-            Password
-            <input
+            <TextField
               autoComplete="current-password"
+              label="Password"
               name="password"
               onChange={(event) => setPassword(event.target.value)}
               required
               type="password"
               value={password}
             />
-          </label>
 
-          {error && <p className="form-error">{error}</p>}
+            {error && <Alert severity="error">{error}</Alert>}
 
-          <button className="primary-button" disabled={isLoading} type="submit">
-            {isLoading ? 'Signing in' : 'Sign in'}
-          </button>
-        </form>
-      </section>
-    </main>
+            <Button disabled={isLoading} type="submit" variant="contained">
+              {isLoading ? 'Signing in' : 'Sign in'}
+            </Button>
+          </Box>
+        </Stack>
+      </Paper>
+    </Box>
   );
 }

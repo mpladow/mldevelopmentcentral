@@ -13,6 +13,7 @@ public sealed class ListSystemsHandler(
     {
         var systems = await dbContext.Systems
             .AsNoTracking()
+            .Include(system => system.ThemeSettings)
             .Include(system => system.AccountAccesses)
             .OrderBy(system => system.SortOrder)
             .ToArrayAsync(cancellationToken);

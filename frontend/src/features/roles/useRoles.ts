@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { apiBaseUrl } from '../../config/api';
 
 export function useRoles(token: string) {
   const [roles, setRoles] = useState<string[]>([]);
   const [message, setMessage] = useState('');
 
-  const loadRoles = async () => {
+  const loadRoles = useCallback(async () => {
     setMessage('');
 
     const response = await fetch(`${apiBaseUrl}/api/roles`, {
@@ -18,7 +18,7 @@ export function useRoles(token: string) {
     }
 
     setRoles((await response.json()) as string[]);
-  };
+  }, [token]);
 
   return { roles, message, loadRoles };
 }

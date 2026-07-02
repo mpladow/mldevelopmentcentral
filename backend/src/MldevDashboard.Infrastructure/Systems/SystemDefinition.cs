@@ -12,5 +12,7 @@ public sealed class SystemDefinition
 
     public bool IsActive { get; set; } = true;
 
+    public SystemThemeSettings? ThemeSettings { get; set; }
+
     public ICollection<SystemAccountAccess> AccountAccesses { get; set; } = [];
 }

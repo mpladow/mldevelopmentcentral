@@ -5,7 +5,12 @@ import type { DashboardSystem } from '../../types/systems';
 
 type SystemPayload = {
 	label: string;
-	accountIds: string[];
+	accounts: SystemAccountAssignmentPayload[];
+};
+
+type SystemAccountAssignmentPayload = {
+	accountId: string;
+	role: string;
 };
 
 export function useSystems(token: string) {

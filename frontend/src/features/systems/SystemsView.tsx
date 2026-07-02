@@ -1,6 +1,28 @@
+import {
+  Alert,
+  Box,
+  Button,
+  Checkbox,
+  FormControl,
+  FormControlLabel,
+  FormGroup,
+  FormLabel,
+  MenuItem,
+  Paper,
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TextField,
+  Typography,
+} from '@mui/material';
 import { ArrowLeft, Edit3, Save, Server } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
 import type { DashboardSystem } from '../../types/systems';
+import { useRoles } from '../roles/useRoles';
 import { useSystems } from './useSystems';
 
 type SystemEditorMode =
@@ -10,7 +32,12 @@ type SystemEditorMode =
 
 type SystemFormState = {
   label: string;
-  accountIds: string[];
+  accounts: SystemAccountAssignment[];
+};
+
+type SystemAccountAssignment = {
+  accountId: string;
+  role: string;
 };
 
 type SystemsViewProps = {
@@ -20,18 +47,22 @@ type SystemsViewProps = {
 
 const emptySystemForm: SystemFormState = {
   label: '',
-  accountIds: [],
+  accounts: [],
 };
+
+const defaultRole = 'User';
 
 export function SystemsView({ onSystemsChanged, token }: SystemsViewProps) {
   const [mode, setMode] = useState<SystemEditorMode>({ type: 'list' });
   const [form, setForm] = useState<SystemFormState>(emptySystemForm);
   const { systems, accounts, message, loadSystems, loadAccounts, saveSystem } = useSystems(token);
+  const { roles, loadRoles } = useRoles(token);
 
   useEffect(() => {
     void loadSystems();
     void loadAccounts();
-  }, [loadAccounts, loadSystems]);
+    void loadRoles();
+  }, [loadAccounts, loadRoles, loadSystems]);
 
   function openCreateSystem() {
     setForm(emptySystemForm);
@@ -41,7 +72,10 @@ export function SystemsView({ onSystemsChanged, token }: SystemsViewProps) {
   function openEditSystem(system: DashboardSystem) {
     setForm({
       label: system.label,
-      accountIds: system.accounts.map((account) => account.id),
+      accounts: system.accounts.map((account) => ({
+        accountId: account.id,
+        role: account.role || defaultRole,
+      })),
     });
     setMode({ type: 'edit', system });
   }
@@ -50,23 +84,39 @@ export function SystemsView({ onSystemsChanged, token }: SystemsViewProps) {
     setMode({ type: 'list' });
   }
 
+  function isAccountSelected(accountId: string) {
+    return form.accounts.some((account) => account.accountId === accountId);
+  }
+
   function toggleAccount(accountId: string) {
     setForm((value) => ({
       ...value,
-      accountIds: value.accountIds.includes(accountId)
-        ? value.accountIds.filter((selectedAccountId) => selectedAccountId !== accountId)
-        : [...value.accountIds, accountId],
+      accounts: value.accounts.some((account) => account.accountId === accountId)
+        ? value.accounts.filter((account) => account.accountId !== accountId)
+        : [...value.accounts, { accountId, role: roles[0] ?? defaultRole }],
     }));
+  }
+
+  function updateAccountRole(accountId: string, role: string) {
+    setForm((value) => ({
+      ...value,
+      accounts: value.accounts.map((account) =>
+        account.accountId === accountId ? { ...account, role } : account,
+      ),
+    }));
+  }
+
+  function getSelectedAccountRole(accountId: string) {
+    return form.accounts.find((account) => account.accountId === accountId)?.role ?? roles[0] ?? defaultRole;
   }
 
   async function saveSystemHandler(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    const isCreateMode = mode.type === 'create';
     const systemId = mode.type === 'edit' ? mode.system.id : undefined;
     const didSave = await saveSystem({
       label: form.label,
-      accountIds: form.accountIds,
+      accounts: form.accounts,
     }, systemId);
 
     if (!didSave) {
@@ -81,110 +131,158 @@ export function SystemsView({ onSystemsChanged, token }: SystemsViewProps) {
     const isCreateMode = mode.type === 'create';
 
     return (
-      <section className="panel systems-panel system-editor-panel">
-        <div className="panel-heading">
-          <div>
-            <h2>{isCreateMode ? 'Create system' : 'Edit system'}</h2>
-            <p>{isCreateMode ? 'Name the system and assign account access.' : 'Update the system name and account access.'}</p>
-          </div>
-          <button className="secondary-button icon-text-button" onClick={closeEditor} type="button">
-            <ArrowLeft size={16} />
+      <Paper component="section" sx={{ display: 'grid', gap: 3, maxWidth: 900, p: 3 }} variant="outlined">
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ alignItems: 'flex-start', justifyContent: 'space-between' }}>
+          <Box>
+            <Typography component="h2" variant="h2">{isCreateMode ? 'Create system' : 'Edit system'}</Typography>
+            <Typography color="text.secondary">
+              {isCreateMode ? 'Name the system and assign account access.' : 'Update the system name and account access.'}
+            </Typography>
+          </Box>
+          <Button onClick={closeEditor} startIcon={<ArrowLeft size={16} />} type="button" variant="outlined">
             Back
-          </button>
-        </div>
+          </Button>
+        </Stack>
 
-        <form className="account-form system-editor-form" onSubmit={saveSystemHandler}>
-          <label>
-            System name
-            <input
-              aria-label="System name"
-              onChange={(event) => setForm((value) => ({ ...value, label: event.target.value }))}
-              required
-              type="text"
-              value={form.label}
-            />
-          </label>
+        <Box component="form" onSubmit={saveSystemHandler} sx={{ display: 'grid', gap: 2.5 }}>
+          <TextField
+            aria-label="System name"
+            label="System name"
+            onChange={(event) => setForm((value) => ({ ...value, label: event.target.value }))}
+            required
+            sx={{ maxWidth: 520 }}
+            type="text"
+            value={form.label}
+          />
 
-          <fieldset className="checkbox-fieldset">
-            <legend>Account access</legend>
-            <div className="checkbox-list">
+          <FormControl component="fieldset" variant="standard">
+            <FormLabel component="legend">Account access</FormLabel>
+            <FormGroup sx={{ display: 'grid', gap: 1.25, mt: 1 }}>
               {accounts.length === 0 ? (
-                <p className="empty-state">No accounts available.</p>
+                <Typography color="text.secondary">No accounts available.</Typography>
               ) : (
                 accounts.map((account) => (
-                  <label className="checkbox-row" key={account.id}>
-                    <input
-                      checked={form.accountIds.includes(account.id)}
-                      onChange={() => toggleAccount(account.id)}
-                      type="checkbox"
+                  <Paper
+                    key={account.id}
+                    sx={{
+                      alignItems: { xs: 'stretch', sm: 'center' },
+                      display: 'grid',
+                      gap: 1.5,
+                      gridTemplateColumns: { xs: '1fr', sm: 'minmax(0, 1fr) minmax(140px, 180px)' },
+                      p: 1.5,
+                    }}
+                    variant="outlined"
+                  >
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={isAccountSelected(account.id)}
+                          onChange={() => toggleAccount(account.id)}
+                        />
+                      }
+                      label={(
+                        <Box sx={{ minWidth: 0 }}>
+                          <Typography sx={{ fontWeight: 800 }} noWrap>{account.displayName}</Typography>
+                          <Typography color="text.secondary" variant="caption" noWrap>{account.email}</Typography>
+                        </Box>
+                      )}
                     />
-                    <span>
-                      <strong>{account.displayName}</strong>
-                      <small>{account.email}</small>
-                    </span>
-                  </label>
+                    <TextField
+                      aria-label={`${account.displayName} system role`}
+                      disabled={!isAccountSelected(account.id)}
+                      onChange={(event) => updateAccountRole(account.id, event.target.value)}
+                      select
+                      size="small"
+                      value={getSelectedAccountRole(account.id)}
+                    >
+                      {(roles.length > 0 ? roles : [defaultRole]).map((role) => (
+                        <MenuItem key={role} value={role}>{role}</MenuItem>
+                      ))}
+                    </TextField>
+                  </Paper>
                 ))
               )}
-            </div>
-          </fieldset>
+            </FormGroup>
+          </FormControl>
 
-          <button className="primary-button icon-text-button" type="submit">
-            {isCreateMode ? <Server size={16} /> : <Save size={16} />}
+          <Button
+            startIcon={isCreateMode ? <Server size={16} /> : <Save size={16} />}
+            sx={{ justifySelf: 'start' }}
+            type="submit"
+            variant="contained"
+          >
             {isCreateMode ? 'Create system' : 'Save system'}
-          </button>
-        </form>
+          </Button>
+        </Box>
 
-        {message && <p className="form-note">{message}</p>}
-      </section>
+        {message && <Alert severity="info">{message}</Alert>}
+      </Paper>
     );
   }
 
   return (
-    <section className="panel systems-panel">
-      <div className="panel-heading">
-        <div>
-          <h2>Systems</h2>
-          <p>Dashboard systems and account access.</p>
-        </div>
-        <div className="panel-actions">
-          <button className="secondary-button" onClick={loadSystems} type="button">Refresh</button>
-          <button className="primary-button icon-text-button" onClick={openCreateSystem} type="button">
-            <Server size={16} />
+    <Paper component="section" sx={{ display: 'grid', gap: 2.5, p: 3 }} variant="outlined">
+      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ alignItems: 'flex-start', justifyContent: 'space-between' }}>
+        <Box>
+          <Typography component="h2" variant="h2">Systems</Typography>
+          <Typography color="text.secondary">Dashboard systems and account access.</Typography>
+        </Box>
+        <Stack direction="row" spacing={1}>
+          <Button onClick={loadSystems} type="button" variant="outlined">Refresh</Button>
+          <Button onClick={openCreateSystem} startIcon={<Server size={16} />} type="button" variant="contained">
             Create system
-          </button>
-        </div>
-      </div>
+          </Button>
+        </Stack>
+      </Stack>
 
-      {message && <p className="form-note">{message}</p>}
+      {message && <Alert severity="info">{message}</Alert>}
 
-      <div className="data-grid systems-grid" aria-label="Systems grid">
-        <div className="data-grid-header system-grid-row">
-          <span>System</span>
-          <span>Key</span>
-          <span>Accounts</span>
-          <span>Actions</span>
-        </div>
-        {systems.length === 0 ? (
-          <p className="empty-state">No systems loaded.</p>
-        ) : (
-          systems.map((system) => (
-            <div className="data-grid-row system-grid-row" key={system.id}>
-              <strong>{system.label}</strong>
-              <span>{system.systemKey}</span>
-              <span>{system.accounts.length === 0 ? 'No accounts assigned' : system.accounts.map((account) => account.displayName).join(', ')}</span>
-              <button
-                aria-label={`Edit ${system.label}`}
-                className="secondary-button icon-text-button"
-                onClick={() => openEditSystem(system)}
-                type="button"
-              >
-                <Edit3 size={16} />
-                Edit
-              </button>
-            </div>
-          ))
-        )}
-      </div>
-    </section>
+      <TableContainer aria-label="Systems grid">
+        <Table sx={{ minWidth: 760 }}>
+          <TableHead>
+            <TableRow>
+              <TableCell>System</TableCell>
+              <TableCell>Key</TableCell>
+              <TableCell>Accounts</TableCell>
+              <TableCell align="right">Actions</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {systems.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={4}>
+                  <Typography color="text.secondary">No systems loaded.</Typography>
+                </TableCell>
+              </TableRow>
+            ) : (
+              systems.map((system) => (
+                <TableRow key={system.id}>
+                  <TableCell>
+                    <Typography sx={{ fontWeight: 800 }}>{system.label}</Typography>
+                  </TableCell>
+                  <TableCell>{system.systemKey}</TableCell>
+                  <TableCell>
+                    {system.accounts.length === 0
+                      ? 'No accounts assigned'
+                      : system.accounts.map((account) => `${account.displayName} (${account.role})`).join(', ')}
+                  </TableCell>
+                  <TableCell align="right">
+                    <Button
+                      aria-label={`Edit ${system.label}`}
+                      onClick={() => openEditSystem(system)}
+                      startIcon={<Edit3 size={16} />}
+                      type="button"
+                      variant="outlined"
+                    >
+                      Edit
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </Paper>
   );
 }

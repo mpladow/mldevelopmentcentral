@@ -1,3 +1,4 @@
+import { Box } from '@mui/material';
 import { useEffect, useState } from 'react';
 import { AccountsView } from '../features/accounts/AccountsView';
 import { useAuthenticatedSession } from '../features/auth/AuthContext';
@@ -28,7 +29,14 @@ export function DashboardShell() {
   }, []);
 
   return (
-    <main className={isSidebarCollapsed ? 'dashboard-shell sidebar-collapsed' : 'dashboard-shell'}>
+    <Box
+      component="main"
+      sx={{
+        display: 'flex',
+        minHeight: '100vh',
+        bgcolor: 'background.default',
+      }}
+    >
       <Sidebar
         activeView={activeView}
         isCollapsed={isSidebarCollapsed}
@@ -36,25 +44,41 @@ export function DashboardShell() {
         user={session.user}
       />
 
-      <section className="main-area">
+      <Box
+        component="section"
+        sx={{
+          display: 'flex',
+          flex: 1,
+          flexDirection: 'column',
+          minWidth: 0,
+        }}
+      >
         <TopBar
           isSidebarCollapsed={isSidebarCollapsed}
           onToggleSidebar={() => setIsSidebarCollapsed((value) => !value)}
           systemListVersion={systemListVersion}
         />
-        <DashboardHeader activeView={activeView} />
+        <Box
+          sx={{
+            display: 'grid',
+            gap: 3,
+            p: { xs: 2, md: 3 },
+          }}
+        >
+          <DashboardHeader activeView={activeView} />
 
-        {activeView === 'accounts' ? (
-          <AccountsView token={session.accessToken} user={session.user} />
-        ) : activeView === 'systems' ? (
-          <SystemsView
-            onSystemsChanged={() => setSystemListVersion((value) => value + 1)}
-            token={session.accessToken}
-          />
-        ) : (
-          <RolesView token={session.accessToken} />
-        )}
-      </section>
-    </main>
+          {activeView === 'accounts' ? (
+            <AccountsView token={session.accessToken} user={session.user} />
+          ) : activeView === 'systems' ? (
+            <SystemsView
+              onSystemsChanged={() => setSystemListVersion((value) => value + 1)}
+              token={session.accessToken}
+            />
+          ) : (
+            <RolesView token={session.accessToken} />
+          )}
+        </Box>
+      </Box>
+    </Box>
   );
 }

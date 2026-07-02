@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using MldevDashboard.Infrastructure.Persistence;
 
@@ -11,9 +12,11 @@ using MldevDashboard.Infrastructure.Persistence;
 namespace MldevDashboard.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(MldevDashboardDbContext))]
-    partial class MldevDashboardDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260702095720_AddSystemThemeSettings")]
+    partial class AddSystemThemeSettings
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

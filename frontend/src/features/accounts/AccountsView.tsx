@@ -1,3 +1,21 @@
+import {
+  Alert,
+  Box,
+  Button,
+  FormControl,
+  InputLabel,
+  NativeSelect,
+  Paper,
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TextField,
+  Typography,
+} from '@mui/material';
 import { ArrowLeft, Edit3, Save, UserPlus } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
 import type { Account } from '../../types/accounts';
@@ -105,124 +123,135 @@ export function AccountsView({ token, user }: AccountsViewProps) {
     const isCreateMode = mode.type === 'create';
 
     return (
-      <section className="panel account-editor-panel">
-        <div className="panel-heading">
-          <div>
-            <h2>{isCreateMode ? 'Create account' : 'Edit account'}</h2>
-            <p>{isCreateMode ? 'Admin-created accounts only.' : 'Update account details and role.'}</p>
-          </div>
-          <button className="secondary-button icon-text-button" onClick={closeEditor} type="button">
-            <ArrowLeft size={16} />
+      <Paper component="section" sx={{ display: 'grid', gap: 3, maxWidth: 760, p: 3 }} variant="outlined">
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ alignItems: 'flex-start', justifyContent: 'space-between' }}>
+          <Box>
+            <Typography component="h2" variant="h2">{isCreateMode ? 'Create account' : 'Edit account'}</Typography>
+            <Typography color="text.secondary">
+              {isCreateMode ? 'Admin-created accounts only.' : 'Update account details and role.'}
+            </Typography>
+          </Box>
+          <Button onClick={closeEditor} startIcon={<ArrowLeft size={16} />} type="button" variant="outlined">
             Back
-          </button>
-        </div>
+          </Button>
+        </Stack>
 
-        <form className="account-form account-editor-form" onSubmit={isCreateMode ? handleCreateAccount : handleUpdateAccount}>
-          <label>
-            Email address
-            <input
-              aria-label="Account email"
-              onChange={(event) => setForm((value) => ({ ...value, email: event.target.value }))}
-              required
-              type="email"
-              value={form.email}
-            />
-          </label>
-          <label>
-            Display name
-            <input
-              aria-label="Account display name"
-              onChange={(event) => setForm((value) => ({ ...value, displayName: event.target.value }))}
-              required
-              type="text"
-              value={form.displayName}
-            />
-          </label>
+        <Box
+          component="form"
+          onSubmit={isCreateMode ? handleCreateAccount : handleUpdateAccount}
+          sx={{ display: 'grid', gap: 2, maxWidth: 520 }}
+        >
+          <TextField
+            label="Email address"
+            onChange={(event) => setForm((value) => ({ ...value, email: event.target.value }))}
+            required
+            slotProps={{ htmlInput: { 'aria-label': 'Account email' } }}
+            type="email"
+            value={form.email}
+          />
+          <TextField
+            label="Display name"
+            onChange={(event) => setForm((value) => ({ ...value, displayName: event.target.value }))}
+            required
+            slotProps={{ htmlInput: { 'aria-label': 'Account display name' } }}
+            type="text"
+            value={form.displayName}
+          />
           {isCreateMode && (
-            <label>
-              Temporary password
-              <input
-                aria-label="Account temporary password"
-                onChange={(event) => setForm((value) => ({ ...value, password: event.target.value }))}
-                required
-                type="password"
-                value={form.password}
-              />
-            </label>
+            <TextField
+              label="Temporary password"
+              onChange={(event) => setForm((value) => ({ ...value, password: event.target.value }))}
+              required
+              slotProps={{ htmlInput: { 'aria-label': 'Account temporary password' } }}
+              type="password"
+              value={form.password}
+            />
           )}
-          <label>
-            Role
-            <select
-              aria-label="Account role"
+          <FormControl>
+            <InputLabel variant="standard">Role</InputLabel>
+            <NativeSelect
+              inputProps={{ 'aria-label': 'Account role' }}
               onChange={(event) => setForm((value) => ({ ...value, role: event.target.value }))}
               value={form.role}
             >
-              <option>Admin</option>
-              <option>User</option>
-              <option>Viewer</option>
-            </select>
-          </label>
-          <button className="primary-button icon-text-button" type="submit">
-            {isCreateMode ? <UserPlus size={16} /> : <Save size={16} />}
+              <option value="Admin">Admin</option>
+              <option value="User">User</option>
+              <option value="Viewer">Viewer</option>
+            </NativeSelect>
+          </FormControl>
+          <Button startIcon={isCreateMode ? <UserPlus size={16} /> : <Save size={16} />} type="submit" variant="contained">
             {isCreateMode ? 'Create account' : 'Save account'}
-          </button>
-        </form>
+          </Button>
+        </Box>
 
-        {message && <p className="form-note">{message}</p>}
-      </section>
+        {message && <Alert severity="info">{message}</Alert>}
+      </Paper>
     );
   }
 
   return (
-    <section className="panel accounts-panel">
-      <div className="panel-heading">
-        <div>
-          <h2>Accounts</h2>
-          <p>Global users with assigned roles.</p>
-        </div>
-        <div className="panel-actions">
-          <button className="secondary-button" onClick={loadAccounts} type="button">Refresh</button>
+    <Paper component="section" sx={{ display: 'grid', gap: 2.5, p: 3 }} variant="outlined">
+      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ alignItems: 'flex-start', justifyContent: 'space-between' }}>
+        <Box>
+          <Typography component="h2" variant="h2">Accounts</Typography>
+          <Typography color="text.secondary">Global users with assigned roles.</Typography>
+        </Box>
+        <Stack direction="row" spacing={1}>
+          <Button onClick={loadAccounts} type="button" variant="outlined">Refresh</Button>
           {canManageAccounts && (
-            <button className="primary-button icon-text-button" onClick={openCreateAccount} type="button">
-              <UserPlus size={16} />
+            <Button onClick={openCreateAccount} startIcon={<UserPlus size={16} />} type="button" variant="contained">
               Create account
-            </button>
+            </Button>
           )}
-        </div>
-      </div>
+        </Stack>
+      </Stack>
 
-      {message && <p className="form-note">{message}</p>}
+      {message && <Alert severity="info">{message}</Alert>}
 
-      <div className="data-grid" aria-label="Accounts grid">
-        <div className={canManageAccounts ? 'data-grid-header with-actions' : 'data-grid-header'}>
-          <span>Name</span>
-          <span>Email</span>
-          <span>Roles</span>
-          {canManageAccounts && <span>Actions</span>}
-        </div>
-        {accounts.length === 0 ? (
-          <p className="empty-state">No accounts loaded.</p>
-        ) : (
-          accounts.map((account) => (
-            <div className={canManageAccounts ? 'data-grid-row with-actions' : 'data-grid-row'} key={account.id}>
-              <strong>{account.displayName}</strong>
-              <span>{account.email}</span>
-              <span>{account.roles.join(', ')}</span>
-              {canManageAccounts && (
-                <button
-                  aria-label={`Edit ${account.displayName}`}
-                  className="secondary-button icon-text-button"
-                  onClick={() => openEditAccount(account)}
-                  type="button"
-                >
-                  <Edit3 size={16} />
-                  Edit
-                </button>
-              )}
-            </div>
-          ))
-        )}
-      </div>
-    </section>
+      <TableContainer aria-label="Accounts grid">
+        <Table sx={{ minWidth: canManageAccounts ? 720 : 620 }}>
+          <TableHead>
+            <TableRow>
+              <TableCell>Name</TableCell>
+              <TableCell>Email</TableCell>
+              <TableCell>Roles</TableCell>
+              {canManageAccounts && <TableCell align="right">Actions</TableCell>}
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {accounts.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={canManageAccounts ? 4 : 3}>
+                  <Typography color="text.secondary">No accounts loaded.</Typography>
+                </TableCell>
+              </TableRow>
+            ) : (
+              accounts.map((account) => (
+                <TableRow key={account.id}>
+                  <TableCell>
+                    <Typography sx={{ fontWeight: 800 }}>{account.displayName}</Typography>
+                  </TableCell>
+                  <TableCell>{account.email}</TableCell>
+                  <TableCell>{account.roles.join(', ')}</TableCell>
+                  {canManageAccounts && (
+                    <TableCell align="right">
+                      <Button
+                        aria-label={`Edit ${account.displayName}`}
+                        onClick={() => openEditAccount(account)}
+                        startIcon={<Edit3 size={16} />}
+                        type="button"
+                        variant="outlined"
+                      >
+                        Edit
+                      </Button>
+                    </TableCell>
+                  )}
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </Paper>
   );
 }
