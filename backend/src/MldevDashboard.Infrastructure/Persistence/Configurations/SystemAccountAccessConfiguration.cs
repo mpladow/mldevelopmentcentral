@@ -15,6 +15,10 @@ public sealed class SystemAccountAccessConfiguration : IEntityTypeConfiguration<
         builder.Property(access => access.AccountId)
             .IsRequired();
 
+        builder.Property(access => access.Role)
+            .HasMaxLength(64)
+            .IsRequired();
+
         builder.HasOne(access => access.SystemDefinition)
             .WithMany(system => system.AccountAccesses)
             .HasForeignKey(access => access.SystemDefinitionId)

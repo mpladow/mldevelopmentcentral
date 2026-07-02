@@ -12,9 +12,11 @@ using MldevDashboard.Api.Features.Roles;
 using MldevDashboard.Api.Features.Roles.ListRoles;
 using MldevDashboard.Api.Features.Systems;
 using MldevDashboard.Api.Features.Systems.CreateSystem;
+using MldevDashboard.Api.Features.Systems.GetSystemTheme;
 using MldevDashboard.Api.Features.Systems.ListAvailableSystems;
 using MldevDashboard.Api.Features.Systems.ListSystems;
 using MldevDashboard.Api.Features.Systems.UpdateSystem;
+using MldevDashboard.Api.Features.Systems.UpdateSystemTheme;
 using MldevDashboard.Api.Identity;
 using MldevDashboard.Infrastructure;
 using MldevDashboard.Infrastructure.Identity;
@@ -50,6 +52,8 @@ builder.Services.AddScoped<ListAvailableSystemsHandler>();
 builder.Services.AddScoped<ListSystemsHandler>();
 builder.Services.AddScoped<CreateSystemHandler>();
 builder.Services.AddScoped<UpdateSystemHandler>();
+builder.Services.AddScoped<GetSystemThemeHandler>();
+builder.Services.AddScoped<UpdateSystemThemeHandler>();
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection(JwtOptions.SectionName));
 
 var jwtOptions = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>()

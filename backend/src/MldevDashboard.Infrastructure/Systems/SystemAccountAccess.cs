@@ -6,5 +6,7 @@ public sealed class SystemAccountAccess
 
     public Guid AccountId { get; set; }
 
+    public string Role { get; set; } = string.Empty;
+
     public SystemDefinition SystemDefinition { get; set; } = null!;
 }

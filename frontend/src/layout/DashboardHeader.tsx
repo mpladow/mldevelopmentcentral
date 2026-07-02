@@ -1,3 +1,4 @@
+import { Box, Paper, Stack, Typography } from '@mui/material';
 import type { ActiveView } from '../types/navigation';
 
 type DashboardHeaderProps = {
@@ -12,25 +13,52 @@ export function DashboardHeader({ activeView }: DashboardHeaderProps) {
       : 'Roles';
 
   return (
-    <section className="dashboard-header">
-      <div>
-        <p className="eyebrow">Global</p>
-        <h1>{activeTitle}</h1>
-      </div>
-      <div className="metric-row" aria-label="Global summary">
-        <article className="metric-card pink">
-          <span>System</span>
-          <strong>Global</strong>
-        </article>
-        <article className="metric-card orange">
-          <span>Mode</span>
-          <strong>Admin</strong>
-        </article>
-        <article className="metric-card navy">
-          <span>Auth</span>
-          <strong>Identity</strong>
-        </article>
-      </div>
-    </section>
+    <Box
+      component="section"
+      sx={{
+        alignItems: { xs: 'flex-start', lg: 'center' },
+        display: 'flex',
+        flexDirection: { xs: 'column', lg: 'row' },
+        gap: 2,
+        justifyContent: 'space-between',
+      }}
+    >
+      <Box>
+        <Typography color="primary" sx={{ fontWeight: 900, textTransform: 'uppercase' }} variant="caption">
+          Global
+        </Typography>
+        <Typography component="h1" variant="h1">
+          {activeTitle}
+        </Typography>
+      </Box>
+      <Stack
+        aria-label="Global summary"
+        direction={{ xs: 'column', sm: 'row' }}
+        spacing={1.5}
+        sx={{ width: { xs: '100%', lg: 'auto' } }}
+      >
+        {[
+          ['System', 'Global'],
+          ['Mode', 'Admin'],
+          ['Auth', 'Identity'],
+        ].map(([label, value]) => (
+          <Paper
+            component="article"
+            key={label}
+            variant="outlined"
+            sx={{
+              minWidth: 150,
+              px: 2,
+              py: 1.5,
+            }}
+          >
+            <Typography color="text.secondary" sx={{ fontWeight: 800 }} variant="caption">
+              {label}
+            </Typography>
+            <Typography sx={{ fontWeight: 900 }}>{value}</Typography>
+          </Paper>
+        ))}
+      </Stack>
+    </Box>
   );
 }

@@ -17,7 +17,16 @@ public sealed class UpdateSystemHandler(
         CancellationToken cancellationToken)
     {
         var label = request.Label.Trim();
-        var accountIds = request.AccountIds.Distinct().ToArray();
+        var accountAssignments = (request.Accounts ?? [])
+            .Select(account => new SystemAccountAssignmentRequest(account.AccountId, NormalizeRole(account.Role)))
+            .DistinctBy(account => account.AccountId)
+            .ToArray();
+        if (accountAssignments.Any(account => string.IsNullOrWhiteSpace(account.Role)))
+        {
+            return ApplicationResult<SystemResponse>.BadRequest("One or more assigned account roles are invalid.");
+        }
+
+        var accountIds = accountAssignments.Select(account => account.AccountId).ToArray();
         if (!await AllAccountsExistAsync(accountIds, cancellationToken))
         {
             return ApplicationResult<SystemResponse>.BadRequest("One or more assigned accounts do not exist.");
@@ -33,12 +42,13 @@ public sealed class UpdateSystemHandler(
 
         systemDefinition.Label = label;
         systemDefinition.AccountAccesses.Clear();
-        foreach (var accountId in accountIds)
+        foreach (var account in accountAssignments)
         {
             systemDefinition.AccountAccesses.Add(new SystemAccountAccess
             {
                 SystemDefinitionId = systemDefinition.Id,
-                AccountId = accountId
+                AccountId = account.AccountId,
+                Role = account.Role
             });
         }
 
@@ -58,5 +68,13 @@ public sealed class UpdateSystemHandler(
             .ToArrayAsync(cancellationToken);
 
         return !accountIds.Except(existingAccountIds).Any();
+    }
+
+    private static string NormalizeRole(string role)
+    {
+        var requestedRole = role?.Trim() ?? string.Empty;
+
+        return ApplicationRoles.All.FirstOrDefault(
+            validRole => string.Equals(validRole, requestedRole, StringComparison.OrdinalIgnoreCase)) ?? string.Empty;
     }
 }
