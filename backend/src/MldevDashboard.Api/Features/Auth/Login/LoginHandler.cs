@@ -29,6 +29,11 @@ public sealed class LoginHandler(
         return ApplicationResult<LoginResponse>.Success(new LoginResponse(
             token.AccessToken,
             token.ExpiresAt,
-            new CurrentUserResponse(user.Id, user.Email ?? string.Empty, user.DisplayName, token.Roles)));
+            new CurrentUserResponse(
+                user.Id,
+                user.Email ?? string.Empty,
+                user.DisplayName,
+                token.Roles,
+                token.Permissions)));
     }
 }

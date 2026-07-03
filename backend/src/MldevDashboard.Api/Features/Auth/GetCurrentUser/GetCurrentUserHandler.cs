@@ -1,11 +1,14 @@
 using Microsoft.AspNetCore.Identity;
 using MldevDashboard.Api.Common;
 using MldevDashboard.Api.Features.Auth;
+using MldevDashboard.Api.Identity;
 using MldevDashboard.Infrastructure.Identity;
 
 namespace MldevDashboard.Api.Features.Auth.GetCurrentUser;
 
-public sealed class GetCurrentUserHandler(UserManager<ApplicationUser> userManager)
+public sealed class GetCurrentUserHandler(
+    UserManager<ApplicationUser> userManager,
+    AppAuthorizationService appAuthorizationService)
 {
     public async Task<ApplicationResult<CurrentUserResponse>> HandleAsync(GetCurrentUserRequest request)
     {
@@ -15,8 +18,13 @@ public sealed class GetCurrentUserHandler(UserManager<ApplicationUser> userManag
             return ApplicationResult<CurrentUserResponse>.Unauthorized();
         }
 
-        var roles = await userManager.GetRolesAsync(user);
+        var access = await appAuthorizationService.GetAccessAsync(user.Id);
         return ApplicationResult<CurrentUserResponse>.Success(
-            new CurrentUserResponse(user.Id, user.Email ?? string.Empty, user.DisplayName, roles.ToArray()));
+            new CurrentUserResponse(
+                user.Id,
+                user.Email ?? string.Empty,
+                user.DisplayName,
+                access.Roles,
+                access.Permissions));
     }
 }

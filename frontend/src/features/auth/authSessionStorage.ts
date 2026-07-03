@@ -40,7 +40,8 @@ function isValidSession(session: Partial<LoginResponse>): session is LoginRespon
     typeof session.user.id !== 'string' ||
     typeof session.user.email !== 'string' ||
     typeof session.user.displayName !== 'string' ||
-    !Array.isArray(session.user.roles)
+    !Array.isArray(session.user.roles) ||
+    !Array.isArray(session.user.permissions)
   ) {
     return false;
   }

@@ -11,12 +11,15 @@ import {
   Typography,
 } from '@mui/material';
 import { LayoutDashboard, Server, ShieldCheck, Users } from 'lucide-react';
+import { permissions } from '../config/permissions';
 import type { SessionUser } from '../types/auth';
 import type { ActiveView } from '../types/navigation';
+import type { AvailableSystem } from '../types/systems';
 import { getInitials } from '../utils/getInitials';
 
 type SidebarProps = {
   activeView: ActiveView;
+  activeSystem: AvailableSystem | null;
   isCollapsed: boolean;
   onNavigate: (view: ActiveView) => void;
   user: SessionUser;
@@ -25,12 +28,56 @@ type SidebarProps = {
 const expandedWidth = 268;
 const collapsedWidth = 78;
 
-export function Sidebar({ activeView, isCollapsed, onNavigate, user }: SidebarProps) {
-  const navItems = [
-    { icon: Users, label: 'Accounts', view: 'accounts' },
-    { icon: Server, label: 'Systems', view: 'systems' },
-    { icon: ShieldCheck, label: 'Roles', view: 'roles' },
-  ] satisfies Array<{ icon: typeof Users; label: string; view: ActiveView }>;
+type NavItem = {
+  icon: typeof Users;
+  label: string;
+  permission: string;
+  systemKey: string;
+  view: ActiveView;
+};
+
+export function Sidebar({ activeSystem, activeView, isCollapsed, onNavigate, user }: SidebarProps) {
+  const allNavItems: NavItem[] = [
+    {
+      icon: Users,
+      label: 'Accounts',
+      permission: permissions.globalMenuAccounts,
+      systemKey: 'global',
+      view: 'accounts',
+    },
+    {
+      icon: Server,
+      label: 'Systems',
+      permission: permissions.globalMenuSystems,
+      systemKey: 'global',
+      view: 'systems',
+    },
+    {
+      icon: ShieldCheck,
+      label: 'Roles',
+      permission: permissions.globalMenuRoles,
+      systemKey: 'global',
+      view: 'roles',
+    },
+    {
+      icon: ShieldCheck,
+      label: 'Factions',
+      permission: permissions.warmasterMenuFactions,
+      systemKey: 'warmaster',
+      view: 'factions',
+    },
+    {
+      icon: Users,
+      label: 'Units',
+      permission: permissions.warmasterMenuUnits,
+      systemKey: 'warmaster',
+      view: 'units',
+    },
+  ];
+  const activeSystemKey = activeSystem?.systemKey.toLowerCase() ?? '';
+  const navItems = allNavItems.filter((item) =>
+    item.systemKey === activeSystemKey && user.permissions.includes(item.permission)
+  );
 
   return (
     <Drawer
@@ -88,7 +135,7 @@ export function Sidebar({ activeView, isCollapsed, onNavigate, user }: SidebarPr
       <List sx={{ px: 1.5, py: 2 }}>
         {!isCollapsed && (
           <Typography color="rgba(255,255,255,0.58)" sx={{ px: 1.5, pb: 1, fontWeight: 900 }} variant="caption">
-            Global
+            {activeSystem?.label ?? 'Systems'}
           </Typography>
         )}
         {navItems.map((item) => {

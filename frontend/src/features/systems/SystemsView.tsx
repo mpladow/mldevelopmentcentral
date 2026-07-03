@@ -3,6 +3,10 @@ import {
   Box,
   Button,
   Checkbox,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   FormControl,
   FormControlLabel,
   FormGroup,
@@ -19,8 +23,9 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { ArrowLeft, Edit3, Save, Server } from 'lucide-react';
+import { ArrowLeft, Edit3, Save, Server, Trash2 } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
+import type { SessionUser } from '../../types/auth';
 import type { DashboardSystem } from '../../types/systems';
 import { useRoles } from '../roles/useRoles';
 import { useSystems } from './useSystems';
@@ -43,6 +48,7 @@ type SystemAccountAssignment = {
 type SystemsViewProps = {
   onSystemsChanged: () => void;
   token: string;
+  user: SessionUser;
 };
 
 const emptySystemForm: SystemFormState = {
@@ -50,13 +56,15 @@ const emptySystemForm: SystemFormState = {
   accounts: [],
 };
 
-const defaultRole = 'User';
-
-export function SystemsView({ onSystemsChanged, token }: SystemsViewProps) {
+export function SystemsView({ onSystemsChanged, token, user }: SystemsViewProps) {
   const [mode, setMode] = useState<SystemEditorMode>({ type: 'list' });
   const [form, setForm] = useState<SystemFormState>(emptySystemForm);
-  const { systems, accounts, message, loadSystems, loadAccounts, saveSystem } = useSystems(token);
+  const [systemPendingDelete, setSystemPendingDelete] = useState<DashboardSystem | null>(null);
+  const { systems, accounts, message, loadSystems, loadAccounts, saveSystem, deleteSystem } = useSystems(token);
   const { roles, loadRoles } = useRoles(token);
+  const canDeleteSystems = user.roles.includes('GlobalAdmin');
+  const roleOptions = getRoleOptions();
+  const defaultRole = roleOptions[0]?.name ?? '';
 
   useEffect(() => {
     void loadSystems();
@@ -74,7 +82,7 @@ export function SystemsView({ onSystemsChanged, token }: SystemsViewProps) {
       label: system.label,
       accounts: system.accounts.map((account) => ({
         accountId: account.id,
-        role: account.role || defaultRole,
+        role: account.role || getSystemRoles(system.id)[0]?.name || '',
       })),
     });
     setMode({ type: 'edit', system });
@@ -93,7 +101,7 @@ export function SystemsView({ onSystemsChanged, token }: SystemsViewProps) {
       ...value,
       accounts: value.accounts.some((account) => account.accountId === accountId)
         ? value.accounts.filter((account) => account.accountId !== accountId)
-        : [...value.accounts, { accountId, role: roles[0] ?? defaultRole }],
+        : [...value.accounts, { accountId, role: defaultRole }],
     }));
   }
 
@@ -107,7 +115,34 @@ export function SystemsView({ onSystemsChanged, token }: SystemsViewProps) {
   }
 
   function getSelectedAccountRole(accountId: string) {
-    return form.accounts.find((account) => account.accountId === accountId)?.role ?? roles[0] ?? defaultRole;
+    return form.accounts.find((account) => account.accountId === accountId)?.role ?? defaultRole;
+  }
+
+  function getRoleOptions() {
+    if (mode.type === 'edit') {
+      return getSystemRoles(mode.system.id);
+    }
+
+    return getDefaultRoleNames(form.label).map((name) => ({
+      id: name,
+      name,
+      displayName: name,
+    }));
+  }
+
+  function getSystemRoles(systemId: number) {
+    return roles
+      .filter((role) => role.systemId === systemId)
+      .map((role) => ({
+        id: role.id,
+        name: role.name,
+        displayName: role.displayName,
+      }));
+  }
+
+  function getDefaultRoleNames(systemLabel: string) {
+    const prefix = systemLabel.replace(/[^a-zA-Z0-9]/g, '') || 'System';
+    return [`${prefix}Admin`, `${prefix}User`, `${prefix}Viewer`];
   }
 
   async function saveSystemHandler(event: FormEvent<HTMLFormElement>) {
@@ -124,6 +159,20 @@ export function SystemsView({ onSystemsChanged, token }: SystemsViewProps) {
     }
 
     setMode({ type: 'list' });
+    onSystemsChanged();
+  }
+
+  async function confirmDeleteSystem() {
+    if (systemPendingDelete === null) {
+      return;
+    }
+
+    const didDelete = await deleteSystem(systemPendingDelete.id);
+    if (!didDelete) {
+      return;
+    }
+
+    setSystemPendingDelete(null);
     onSystemsChanged();
   }
 
@@ -148,7 +197,19 @@ export function SystemsView({ onSystemsChanged, token }: SystemsViewProps) {
           <TextField
             aria-label="System name"
             label="System name"
-            onChange={(event) => setForm((value) => ({ ...value, label: event.target.value }))}
+            onChange={(event) => {
+              const nextLabel = event.target.value;
+              setForm((value) => ({
+                ...value,
+                accounts: mode.type === 'create'
+                  ? value.accounts.map((account) => ({
+                    ...account,
+                    role: getDefaultRoleNames(nextLabel)[0],
+                  }))
+                  : value.accounts,
+                label: nextLabel,
+              }));
+            }}
             required
             sx={{ maxWidth: 520 }}
             type="text"
@@ -195,8 +256,8 @@ export function SystemsView({ onSystemsChanged, token }: SystemsViewProps) {
                       size="small"
                       value={getSelectedAccountRole(account.id)}
                     >
-                      {(roles.length > 0 ? roles : [defaultRole]).map((role) => (
-                        <MenuItem key={role} value={role}>{role}</MenuItem>
+                      {roleOptions.map((role) => (
+                        <MenuItem key={role.id} value={role.name}>{role.displayName}</MenuItem>
                       ))}
                     </TextField>
                   </Paper>
@@ -267,15 +328,29 @@ export function SystemsView({ onSystemsChanged, token }: SystemsViewProps) {
                       : system.accounts.map((account) => `${account.displayName} (${account.role})`).join(', ')}
                   </TableCell>
                   <TableCell align="right">
-                    <Button
-                      aria-label={`Edit ${system.label}`}
-                      onClick={() => openEditSystem(system)}
-                      startIcon={<Edit3 size={16} />}
-                      type="button"
-                      variant="outlined"
-                    >
-                      Edit
-                    </Button>
+                    <Stack direction="row" spacing={1} sx={{ justifyContent: 'flex-end' }}>
+                      <Button
+                        aria-label={`Edit ${system.label}`}
+                        onClick={() => openEditSystem(system)}
+                        startIcon={<Edit3 size={16} />}
+                        type="button"
+                        variant="outlined"
+                      >
+                        Edit
+                      </Button>
+                      {canDeleteSystems && system.systemKey !== 'global' && (
+                        <Button
+                          aria-label={`Delete ${system.label}`}
+                          color="error"
+                          onClick={() => setSystemPendingDelete(system)}
+                          startIcon={<Trash2 size={16} />}
+                          type="button"
+                          variant="outlined"
+                        >
+                          Delete
+                        </Button>
+                      )}
+                    </Stack>
                   </TableCell>
                 </TableRow>
               ))
@@ -283,6 +358,45 @@ export function SystemsView({ onSystemsChanged, token }: SystemsViewProps) {
           </TableBody>
         </Table>
       </TableContainer>
+
+      <Dialog
+        fullWidth
+        maxWidth="sm"
+        onClose={() => setSystemPendingDelete(null)}
+        open={systemPendingDelete !== null}
+      >
+        <DialogTitle>Delete {systemPendingDelete?.label}</DialogTitle>
+        <DialogContent dividers sx={{ display: 'grid', gap: 2 }}>
+          <Typography>
+            This will delete the system, its roles, permissions, theme settings, and role assignments.
+          </Typography>
+          <Box>
+            <Typography sx={{ fontWeight: 900 }}>Accounts with roles in this system</Typography>
+            {systemPendingDelete?.accounts.length === 0 ? (
+              <Typography color="text.secondary">No accounts currently have roles in this system.</Typography>
+            ) : (
+              <Stack component="ul" spacing={1} sx={{ m: 0, mt: 1, pl: 2.5 }}>
+                {systemPendingDelete?.accounts.map((account) => (
+                  <Box component="li" key={account.id}>
+                    <Typography sx={{ fontWeight: 800 }}>{account.displayName}</Typography>
+                    <Typography color="text.secondary" variant="body2">
+                      {account.email} - {account.role}
+                    </Typography>
+                  </Box>
+                ))}
+              </Stack>
+            )}
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSystemPendingDelete(null)} type="button" variant="outlined">
+            Cancel
+          </Button>
+          <Button color="error" onClick={confirmDeleteSystem} startIcon={<Trash2 size={16} />} type="button" variant="contained">
+            Delete system
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Paper>
   );
 }

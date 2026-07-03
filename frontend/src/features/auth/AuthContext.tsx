@@ -5,6 +5,7 @@ import { clearStoredSession, loadStoredSession, storeSession } from './authSessi
 type AuthContextValue = {
   accessToken: string | null;
   hasAnyRole: (roles: string[]) => boolean;
+  hasPermission: (permission: string) => boolean;
   hasRole: (role: string) => boolean;
   isAuthenticated: boolean;
   login: (session: LoginResponse) => void;
@@ -28,6 +29,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     return {
       accessToken: session?.accessToken ?? null,
       hasAnyRole: (roles) => Boolean(user && roles.some((role) => user.roles.includes(role))),
+      hasPermission: (permission) => Boolean(user?.permissions.includes(permission)),
       hasRole: (role) => Boolean(user?.roles.includes(role)),
       isAuthenticated: Boolean(session),
       login: (nextSession) => {

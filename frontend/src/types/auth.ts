@@ -3,6 +3,7 @@ export type SessionUser = {
   email: string;
   displayName: string;
   roles: string[];
+  permissions: string[];
 };
 
 export type LoginResponse = {

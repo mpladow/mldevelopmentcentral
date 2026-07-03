@@ -223,6 +223,94 @@ namespace MldevDashboard.Infrastructure.Persistence.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
+            modelBuilder.Entity("MldevDashboard.Infrastructure.Systems.ApplicationPermission", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(96)
+                        .HasColumnType("nvarchar(96)");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<string>("PermissionKey")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("nvarchar(160)");
+
+                    b.Property<int>("SystemDefinitionId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PermissionKey")
+                        .IsUnique();
+
+                    b.HasIndex("SystemDefinitionId");
+
+                    b.ToTable("ApplicationPermissions", (string)null);
+                });
+
+            modelBuilder.Entity("MldevDashboard.Infrastructure.Systems.ApplicationRole", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<bool>("IsProtected")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SystemDefinitionId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.HasIndex("SystemDefinitionId");
+
+                    b.ToTable("ApplicationRoles", (string)null);
+                });
+
+            modelBuilder.Entity("MldevDashboard.Infrastructure.Systems.ApplicationRolePermission", b =>
+                {
+                    b.Property<int>("ApplicationRoleId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ApplicationPermissionId")
+                        .HasColumnType("int");
+
+                    b.HasKey("ApplicationRoleId", "ApplicationPermissionId");
+
+                    b.HasIndex("ApplicationPermissionId");
+
+                    b.ToTable("ApplicationRolePermissions", (string)null);
+                });
+
             modelBuilder.Entity("MldevDashboard.Infrastructure.Systems.SystemAccountAccess", b =>
                 {
                     b.Property<int>("SystemDefinitionId")
@@ -241,6 +329,26 @@ namespace MldevDashboard.Infrastructure.Persistence.Migrations
                     b.HasIndex("AccountId");
 
                     b.ToTable("SystemAccountAccesses", (string)null);
+                });
+
+            modelBuilder.Entity("MldevDashboard.Infrastructure.Systems.SystemAccountRole", b =>
+                {
+                    b.Property<int>("SystemDefinitionId")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("AccountId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("ApplicationRoleId")
+                        .HasColumnType("int");
+
+                    b.HasKey("SystemDefinitionId", "AccountId", "ApplicationRoleId");
+
+                    b.HasIndex("AccountId");
+
+                    b.HasIndex("ApplicationRoleId");
+
+                    b.ToTable("SystemAccountRoles", (string)null);
                 });
 
             modelBuilder.Entity("MldevDashboard.Infrastructure.Systems.SystemDefinition", b =>
@@ -366,6 +474,47 @@ namespace MldevDashboard.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("MldevDashboard.Infrastructure.Systems.ApplicationPermission", b =>
+                {
+                    b.HasOne("MldevDashboard.Infrastructure.Systems.SystemDefinition", "SystemDefinition")
+                        .WithMany("Permissions")
+                        .HasForeignKey("SystemDefinitionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("SystemDefinition");
+                });
+
+            modelBuilder.Entity("MldevDashboard.Infrastructure.Systems.ApplicationRole", b =>
+                {
+                    b.HasOne("MldevDashboard.Infrastructure.Systems.SystemDefinition", "SystemDefinition")
+                        .WithMany("Roles")
+                        .HasForeignKey("SystemDefinitionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("SystemDefinition");
+                });
+
+            modelBuilder.Entity("MldevDashboard.Infrastructure.Systems.ApplicationRolePermission", b =>
+                {
+                    b.HasOne("MldevDashboard.Infrastructure.Systems.ApplicationPermission", "ApplicationPermission")
+                        .WithMany("RolePermissions")
+                        .HasForeignKey("ApplicationPermissionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MldevDashboard.Infrastructure.Systems.ApplicationRole", "ApplicationRole")
+                        .WithMany("RolePermissions")
+                        .HasForeignKey("ApplicationRoleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ApplicationPermission");
+
+                    b.Navigation("ApplicationRole");
+                });
+
             modelBuilder.Entity("MldevDashboard.Infrastructure.Systems.SystemAccountAccess", b =>
                 {
                     b.HasOne("MldevDashboard.Infrastructure.Systems.SystemDefinition", "SystemDefinition")
@@ -373,6 +522,25 @@ namespace MldevDashboard.Infrastructure.Persistence.Migrations
                         .HasForeignKey("SystemDefinitionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("SystemDefinition");
+                });
+
+            modelBuilder.Entity("MldevDashboard.Infrastructure.Systems.SystemAccountRole", b =>
+                {
+                    b.HasOne("MldevDashboard.Infrastructure.Systems.ApplicationRole", "ApplicationRole")
+                        .WithMany("AccountRoles")
+                        .HasForeignKey("ApplicationRoleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MldevDashboard.Infrastructure.Systems.SystemDefinition", "SystemDefinition")
+                        .WithMany("AccountRoles")
+                        .HasForeignKey("SystemDefinitionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ApplicationRole");
 
                     b.Navigation("SystemDefinition");
                 });
@@ -388,9 +556,27 @@ namespace MldevDashboard.Infrastructure.Persistence.Migrations
                     b.Navigation("SystemDefinition");
                 });
 
+            modelBuilder.Entity("MldevDashboard.Infrastructure.Systems.ApplicationPermission", b =>
+                {
+                    b.Navigation("RolePermissions");
+                });
+
+            modelBuilder.Entity("MldevDashboard.Infrastructure.Systems.ApplicationRole", b =>
+                {
+                    b.Navigation("AccountRoles");
+
+                    b.Navigation("RolePermissions");
+                });
+
             modelBuilder.Entity("MldevDashboard.Infrastructure.Systems.SystemDefinition", b =>
                 {
                     b.Navigation("AccountAccesses");
+
+                    b.Navigation("AccountRoles");
+
+                    b.Navigation("Permissions");
+
+                    b.Navigation("Roles");
 
                     b.Navigation("ThemeSettings");
                 });

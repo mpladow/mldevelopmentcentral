@@ -15,6 +15,14 @@ public sealed class MldevDashboardDbContext(DbContextOptions<MldevDashboardDbCon
 
     public DbSet<SystemThemeSettings> SystemThemeSettings => Set<SystemThemeSettings>();
 
+    public DbSet<ApplicationRole> ApplicationRoles => Set<ApplicationRole>();
+
+    public DbSet<ApplicationPermission> ApplicationPermissions => Set<ApplicationPermission>();
+
+    public DbSet<ApplicationRolePermission> ApplicationRolePermissions => Set<ApplicationRolePermission>();
+
+    public DbSet<SystemAccountRole> SystemAccountRoles => Set<SystemAccountRole>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
