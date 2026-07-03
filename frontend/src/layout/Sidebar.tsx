@@ -11,6 +11,7 @@ import {
   Typography,
 } from '@mui/material';
 import { LayoutDashboard, Server, ShieldCheck, Users } from 'lucide-react';
+import { permissions } from '../config/permissions';
 import type { SessionUser } from '../types/auth';
 import type { ActiveView } from '../types/navigation';
 import { getInitials } from '../utils/getInitials';
@@ -25,12 +26,20 @@ type SidebarProps = {
 const expandedWidth = 268;
 const collapsedWidth = 78;
 
+type NavItem = {
+  icon: typeof Users;
+  label: string;
+  permission: string;
+  view: ActiveView;
+};
+
 export function Sidebar({ activeView, isCollapsed, onNavigate, user }: SidebarProps) {
-  const navItems = [
-    { icon: Users, label: 'Accounts', view: 'accounts' },
-    { icon: Server, label: 'Systems', view: 'systems' },
-    { icon: ShieldCheck, label: 'Roles', view: 'roles' },
-  ] satisfies Array<{ icon: typeof Users; label: string; view: ActiveView }>;
+  const allNavItems: NavItem[] = [
+    { icon: Users, label: 'Accounts', permission: permissions.globalMenuAccounts, view: 'accounts' },
+    { icon: Server, label: 'Systems', permission: permissions.globalMenuSystems, view: 'systems' },
+    { icon: ShieldCheck, label: 'Roles', permission: permissions.globalMenuRoles, view: 'roles' },
+  ];
+  const navItems = allNavItems.filter((item) => user.permissions.includes(item.permission));
 
   return (
     <Drawer

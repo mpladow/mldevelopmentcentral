@@ -50,13 +50,13 @@ const emptySystemForm: SystemFormState = {
   accounts: [],
 };
 
-const defaultRole = 'User';
-
 export function SystemsView({ onSystemsChanged, token }: SystemsViewProps) {
   const [mode, setMode] = useState<SystemEditorMode>({ type: 'list' });
   const [form, setForm] = useState<SystemFormState>(emptySystemForm);
   const { systems, accounts, message, loadSystems, loadAccounts, saveSystem } = useSystems(token);
   const { roles, loadRoles } = useRoles(token);
+  const roleOptions = getRoleOptions();
+  const defaultRole = roleOptions[0]?.name ?? '';
 
   useEffect(() => {
     void loadSystems();
@@ -74,7 +74,7 @@ export function SystemsView({ onSystemsChanged, token }: SystemsViewProps) {
       label: system.label,
       accounts: system.accounts.map((account) => ({
         accountId: account.id,
-        role: account.role || defaultRole,
+        role: account.role || getSystemRoles(system.id)[0]?.name || '',
       })),
     });
     setMode({ type: 'edit', system });
@@ -93,7 +93,7 @@ export function SystemsView({ onSystemsChanged, token }: SystemsViewProps) {
       ...value,
       accounts: value.accounts.some((account) => account.accountId === accountId)
         ? value.accounts.filter((account) => account.accountId !== accountId)
-        : [...value.accounts, { accountId, role: roles[0] ?? defaultRole }],
+        : [...value.accounts, { accountId, role: defaultRole }],
     }));
   }
 
@@ -107,7 +107,34 @@ export function SystemsView({ onSystemsChanged, token }: SystemsViewProps) {
   }
 
   function getSelectedAccountRole(accountId: string) {
-    return form.accounts.find((account) => account.accountId === accountId)?.role ?? roles[0] ?? defaultRole;
+    return form.accounts.find((account) => account.accountId === accountId)?.role ?? defaultRole;
+  }
+
+  function getRoleOptions() {
+    if (mode.type === 'edit') {
+      return getSystemRoles(mode.system.id);
+    }
+
+    return getDefaultRoleNames(form.label).map((name) => ({
+      id: name,
+      name,
+      displayName: name,
+    }));
+  }
+
+  function getSystemRoles(systemId: number) {
+    return roles
+      .filter((role) => role.systemId === systemId)
+      .map((role) => ({
+        id: role.id,
+        name: role.name,
+        displayName: role.displayName,
+      }));
+  }
+
+  function getDefaultRoleNames(systemLabel: string) {
+    const prefix = systemLabel.replace(/[^a-zA-Z0-9]/g, '') || 'System';
+    return [`${prefix}Admin`, `${prefix}User`, `${prefix}Viewer`];
   }
 
   async function saveSystemHandler(event: FormEvent<HTMLFormElement>) {
@@ -148,7 +175,19 @@ export function SystemsView({ onSystemsChanged, token }: SystemsViewProps) {
           <TextField
             aria-label="System name"
             label="System name"
-            onChange={(event) => setForm((value) => ({ ...value, label: event.target.value }))}
+            onChange={(event) => {
+              const nextLabel = event.target.value;
+              setForm((value) => ({
+                ...value,
+                accounts: mode.type === 'create'
+                  ? value.accounts.map((account) => ({
+                    ...account,
+                    role: getDefaultRoleNames(nextLabel)[0],
+                  }))
+                  : value.accounts,
+                label: nextLabel,
+              }));
+            }}
             required
             sx={{ maxWidth: 520 }}
             type="text"
@@ -195,8 +234,8 @@ export function SystemsView({ onSystemsChanged, token }: SystemsViewProps) {
                       size="small"
                       value={getSelectedAccountRole(account.id)}
                     >
-                      {(roles.length > 0 ? roles : [defaultRole]).map((role) => (
-                        <MenuItem key={role} value={role}>{role}</MenuItem>
+                      {roleOptions.map((role) => (
+                        <MenuItem key={role.id} value={role.name}>{role.displayName}</MenuItem>
                       ))}
                     </TextField>
                   </Paper>

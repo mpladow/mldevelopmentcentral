@@ -3,10 +3,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using MldevDashboard.Api.Common;
-using MldevDashboard.Api.Features.Systems;
-using MldevDashboard.Api.Features.Systems.CreateSystem;
-using MldevDashboard.Api.Features.Systems.GetSystemTheme;
-using MldevDashboard.Api.Features.Systems.UpdateSystemTheme;
+using MldevDashboard.Api.Features.Global.Systems;
+using MldevDashboard.Api.Features.Global.Systems.CreateSystem;
+using MldevDashboard.Api.Features.Global.Systems.GetSystemTheme;
+using MldevDashboard.Api.Features.Global.Systems.UpdateSystemTheme;
 using MldevDashboard.Infrastructure.Identity;
 using MldevDashboard.Infrastructure.Persistence;
 using MldevDashboard.Infrastructure.Systems;
@@ -25,17 +25,17 @@ public sealed class SystemHandlerTests
         var handler = new CreateSystemHandler(dbContext, userManager);
 
         var result = await handler.HandleAsync(
-            new CreateSystemRequest("War Machine", [new SystemAccountAssignmentRequest(account.Id, ApplicationRoles.Admin)]),
+            new CreateSystemRequest("War Machine", [new SystemAccountAssignmentRequest(account.Id, "WarMachineAdmin")]),
             CancellationToken.None);
 
         Assert.Equal(ApplicationResultStatus.Created, result.Status);
         Assert.NotNull(result.Value);
         Assert.Equal("war-machine", result.Value.SystemKey);
         Assert.Single(result.Value.Accounts);
-        Assert.Equal(ApplicationRoles.Admin, result.Value.Accounts.Single().Role);
-        Assert.True(await dbContext.SystemAccountAccesses.AnyAsync(access =>
+        Assert.Equal("WarMachineAdmin", result.Value.Accounts.Single().Role);
+        Assert.True(await dbContext.SystemAccountRoles.AnyAsync(access =>
             access.AccountId == account.Id &&
-            access.Role == ApplicationRoles.Admin));
+            access.ApplicationRole.Name == "WarMachineAdmin"));
     }
 
     [Fact]
@@ -47,7 +47,7 @@ public sealed class SystemHandlerTests
         var handler = new CreateSystemHandler(dbContext, userManager);
 
         var result = await handler.HandleAsync(
-            new CreateSystemRequest("War Machine", [new SystemAccountAssignmentRequest(Guid.NewGuid(), ApplicationRoles.User)]),
+            new CreateSystemRequest("War Machine", [new SystemAccountAssignmentRequest(Guid.NewGuid(), "WarMachineUser")]),
             CancellationToken.None);
 
         Assert.Equal(ApplicationResultStatus.BadRequest, result.Status);
@@ -83,7 +83,7 @@ public sealed class SystemHandlerTests
         var handler = new CreateSystemHandler(dbContext, userManager);
 
         var result = await handler.HandleAsync(
-            new CreateSystemRequest("War Machine", [new SystemAccountAssignmentRequest(account.Id, ApplicationRoles.User)]),
+            new CreateSystemRequest("War Machine", [new SystemAccountAssignmentRequest(account.Id, "WarMachineUser")]),
             CancellationToken.None);
 
         Assert.Equal(ApplicationResultStatus.Conflict, result.Status);

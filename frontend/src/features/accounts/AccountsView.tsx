@@ -18,8 +18,10 @@ import {
 } from '@mui/material';
 import { ArrowLeft, Edit3, Save, UserPlus } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
+import { permissions } from '../../config/permissions';
 import type { Account } from '../../types/accounts';
 import type { SessionUser } from '../../types/auth';
+import { useRoles } from '../roles/useRoles';
 import { useAccounts } from './useAccounts';
 
 type AccountEditorMode =
@@ -43,22 +45,24 @@ const emptyAccountForm: AccountFormState = {
   email: '',
   displayName: '',
   password: '',
-  role: 'User',
+  role: '',
 };
 
 export function AccountsView({ token, user }: AccountsViewProps) {
   const [mode, setMode] = useState<AccountEditorMode>({ type: 'list' });
   const [form, setForm] = useState(emptyAccountForm);
-  const canManageAccounts = user.roles.includes('Admin');
+  const canManageAccounts = user.permissions.includes(permissions.globalAccountsManage);
   const { accounts, message, clearMessage, loadAccounts, createAccount, updateAccount } = useAccounts(token);
+  const { roles, loadRoles } = useRoles(token);
 
   useEffect(() => {
     void loadAccounts();
-  }, [loadAccounts]);
+    void loadRoles();
+  }, [loadAccounts, loadRoles]);
 
   function openCreateAccount() {
     clearMessage();
-    setForm(emptyAccountForm);
+    setForm({ ...emptyAccountForm, role: roles[0]?.name ?? '' });
     setMode({ type: 'create' });
   }
 
@@ -68,7 +72,7 @@ export function AccountsView({ token, user }: AccountsViewProps) {
       email: account.email,
       displayName: account.displayName,
       password: '',
-      role: account.roles[0] ?? 'User',
+      role: account.roles[0] ?? roles[0]?.name ?? '',
     });
     setMode({ type: 'edit', account });
   }
@@ -86,7 +90,7 @@ export function AccountsView({ token, user }: AccountsViewProps) {
       email: form.email,
       displayName: form.displayName,
       password: form.password,
-      roles: [form.role],
+      roles: form.role ? [form.role] : [],
     });
 
     if (!created) {
@@ -109,7 +113,7 @@ export function AccountsView({ token, user }: AccountsViewProps) {
     const updated = await updateAccount(mode.account.id, {
       email: form.email,
       displayName: form.displayName,
-      roles: [form.role],
+      roles: form.role ? [form.role] : [],
     });
 
     if (!updated) {
@@ -174,9 +178,12 @@ export function AccountsView({ token, user }: AccountsViewProps) {
               onChange={(event) => setForm((value) => ({ ...value, role: event.target.value }))}
               value={form.role}
             >
-              <option value="Admin">Admin</option>
-              <option value="User">User</option>
-              <option value="Viewer">Viewer</option>
+              <option value="">No role</option>
+              {roles.map((role) => (
+                <option key={role.id} value={role.name}>
+                  {role.displayName} ({role.systemLabel})
+                </option>
+              ))}
             </NativeSelect>
           </FormControl>
           <Button startIcon={isCreateMode ? <UserPlus size={16} /> : <Save size={16} />} type="submit" variant="contained">

@@ -4,6 +4,7 @@ import { AccountsView } from '../features/accounts/AccountsView';
 import { useAuthenticatedSession } from '../features/auth/AuthContext';
 import { RolesView } from '../features/roles/RolesView';
 import { SystemsView } from '../features/systems/SystemsView';
+import { permissions } from '../config/permissions';
 import type { ActiveView } from '../types/navigation';
 import { DashboardHeader } from './DashboardHeader';
 import { Sidebar } from './Sidebar';
@@ -16,6 +17,11 @@ export function DashboardShell() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [activeView, setActiveView] = useState<ActiveView>('accounts');
   const [systemListVersion, setSystemListVersion] = useState(0);
+  const visibleViews = [
+    session.user.permissions.includes(permissions.globalMenuAccounts) ? 'accounts' : null,
+    session.user.permissions.includes(permissions.globalMenuSystems) ? 'systems' : null,
+    session.user.permissions.includes(permissions.globalMenuRoles) ? 'roles' : null,
+  ].filter((view): view is ActiveView => Boolean(view));
 
   useEffect(() => {
     const updateSidebarForViewport = () => {
@@ -27,6 +33,12 @@ export function DashboardShell() {
 
     return () => window.removeEventListener('resize', updateSidebarForViewport);
   }, []);
+
+  useEffect(() => {
+    if (!visibleViews.includes(activeView) && visibleViews.length > 0) {
+      setActiveView(visibleViews[0]);
+    }
+  }, [activeView, visibleViews]);
 
   return (
     <Box
@@ -67,7 +79,7 @@ export function DashboardShell() {
         >
           <DashboardHeader activeView={activeView} />
 
-          {activeView === 'accounts' ? (
+          {visibleViews.length === 0 ? null : activeView === 'accounts' ? (
             <AccountsView token={session.accessToken} user={session.user} />
           ) : activeView === 'systems' ? (
             <SystemsView

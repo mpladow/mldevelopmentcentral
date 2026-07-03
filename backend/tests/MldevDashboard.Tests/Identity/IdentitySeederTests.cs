@@ -21,12 +21,12 @@ public sealed class IdentitySeederTests
         await services.SeedIdentityAsync(configuration);
 
         using var scope = services.CreateScope();
-        var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
+        var dbContext = scope.ServiceProvider.GetRequiredService<MldevDashboardDbContext>();
+        var globalAdmin = await dbContext.ApplicationRoles
+            .SingleOrDefaultAsync(role => role.Name == ApplicationRoleNames.GlobalAdmin);
 
-        foreach (var role in ApplicationRoles.All)
-        {
-            Assert.True(await roleManager.RoleExistsAsync(role), $"Expected role {role} to exist.");
-        }
+        Assert.NotNull(globalAdmin);
+        Assert.True(globalAdmin.IsProtected);
     }
 
     [Fact]
@@ -43,7 +43,10 @@ public sealed class IdentitySeederTests
 
         Assert.NotNull(admin);
         Assert.Equal("ML Development Admin", admin.DisplayName);
-        Assert.True(await userManager.IsInRoleAsync(admin, ApplicationRoles.Admin));
+        var dbContext = scope.ServiceProvider.GetRequiredService<MldevDashboardDbContext>();
+        Assert.True(await dbContext.SystemAccountRoles.AnyAsync(accountRole =>
+            accountRole.AccountId == admin.Id &&
+            accountRole.ApplicationRole.Name == ApplicationRoleNames.GlobalAdmin));
     }
 
     [Fact]
@@ -78,7 +81,7 @@ public sealed class IdentitySeederTests
         var admin = await userManager.FindByEmailAsync("ml.development.2022@gmail.com");
 
         Assert.NotNull(admin);
-        Assert.True(await dbContext.SystemAccountAccesses.AnyAsync(access => access.AccountId == admin.Id));
+        Assert.True(await dbContext.SystemAccountRoles.AnyAsync(access => access.AccountId == admin.Id));
     }
 
     [Fact]
@@ -97,7 +100,7 @@ public sealed class IdentitySeederTests
 
         Assert.NotNull(admin);
         Assert.Equal(1, await dbContext.Systems.CountAsync(system => system.SystemKey == "global"));
-        Assert.Equal(1, await dbContext.SystemAccountAccesses.CountAsync(access => access.AccountId == admin.Id));
+        Assert.Equal(1, await dbContext.SystemAccountRoles.CountAsync(access => access.AccountId == admin.Id));
     }
 
     [Fact]

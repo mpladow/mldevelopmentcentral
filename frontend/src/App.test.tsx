@@ -2,6 +2,7 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
+import { permissions } from './config/permissions';
 
 const loginResponse = {
   accessToken: 'test-token',
@@ -10,7 +11,15 @@ const loginResponse = {
     id: '3b9cda16-bc2f-4e18-a6f2-56ebdd50beef',
     email: 'ml.development.2022@gmail.com',
     displayName: 'ML Development Admin',
-    roles: ['Admin'],
+    permissions: [
+      permissions.globalMenuAccounts,
+      permissions.globalMenuSystems,
+      permissions.globalMenuRoles,
+      permissions.globalAccountsManage,
+      permissions.globalSystemsManage,
+      permissions.globalRolesManage,
+    ],
+    roles: ['GlobalAdmin'],
   },
 };
 
@@ -27,7 +36,8 @@ const viewerLoginResponse = {
   ...loginResponse,
   user: {
     ...loginResponse.user,
-    roles: ['Viewer'],
+    permissions: [permissions.globalMenuAccounts],
+    roles: ['GlobalViewer'],
   },
 };
 
@@ -36,13 +46,64 @@ const accountsResponse = [
     id: 'c2c4eab7-9266-408b-bb47-f7374a91f76d',
     email: 'admin@example.com',
     displayName: 'Admin Example',
-    roles: ['Admin'],
+    roles: ['GlobalAdmin'],
   },
   {
     id: '015941d7-c05a-474a-9d8e-458fb86b89d5',
     email: 'viewer@example.com',
     displayName: 'Viewer Example',
-    roles: ['Viewer'],
+    roles: ['GlobalViewer'],
+  },
+];
+
+const rolesResponse = [
+  {
+    id: 1,
+    systemId: 1,
+    systemKey: 'global',
+    systemLabel: 'Global',
+    name: 'GlobalAdmin',
+    displayName: 'Global Admin',
+    isProtected: true,
+    permissions: [
+      permissions.globalMenuAccounts,
+      permissions.globalMenuSystems,
+      permissions.globalMenuRoles,
+      permissions.globalAccountsManage,
+      permissions.globalSystemsManage,
+      permissions.globalRolesManage,
+    ],
+  },
+  {
+    id: 2,
+    systemId: 1,
+    systemKey: 'global',
+    systemLabel: 'Global',
+    name: 'GlobalViewer',
+    displayName: 'Global Viewer',
+    isProtected: false,
+    permissions: [permissions.globalMenuAccounts],
+  },
+];
+
+const permissionCatalogResponse = [
+  {
+    id: 1,
+    systemId: 1,
+    systemKey: 'global',
+    systemLabel: 'Global',
+    permissionKey: permissions.globalMenuAccounts,
+    displayName: 'Accounts menu',
+    category: 'Menus',
+  },
+  {
+    id: 2,
+    systemId: 1,
+    systemKey: 'global',
+    systemLabel: 'Global',
+    permissionKey: permissions.globalAccountsManage,
+    displayName: 'Manage accounts',
+    category: 'Administration',
   },
 ];
 
@@ -203,7 +264,7 @@ describe('App', () => {
     expect(screen.getByRole('heading', { level: 2, name: /edit account/i })).toBeInTheDocument();
     expect(screen.getByLabelText(/account email/i)).toHaveValue('viewer@example.com');
     expect(screen.getByLabelText(/account display name/i)).toHaveValue('Viewer Example');
-    expect(screen.getByLabelText(/account role/i)).toHaveValue('Viewer');
+    expect(screen.getByLabelText(/account role/i)).toHaveValue('GlobalViewer');
     expect(screen.queryByLabelText(/account temporary password/i)).not.toBeInTheDocument();
   });
 
@@ -251,6 +312,24 @@ function mockLogin(response: typeof loginResponse) {
       );
     }
 
+    if (url.endsWith('/api/roles/permissions')) {
+      return Promise.resolve(
+        new Response(JSON.stringify(permissionCatalogResponse), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
+    }
+
+    if (url.endsWith('/api/roles')) {
+      return Promise.resolve(
+        new Response(JSON.stringify(rolesResponse), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
+    }
+
     return Promise.resolve(
       new Response(JSON.stringify(response), {
         status: 404,
@@ -276,6 +355,24 @@ function mockAuthenticatedRequests() {
     if (url.endsWith('/api/accounts')) {
       return Promise.resolve(
         new Response(JSON.stringify(accountsResponse), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
+    }
+
+    if (url.endsWith('/api/roles/permissions')) {
+      return Promise.resolve(
+        new Response(JSON.stringify(permissionCatalogResponse), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
+    }
+
+    if (url.endsWith('/api/roles')) {
+      return Promise.resolve(
+        new Response(JSON.stringify(rolesResponse), {
           status: 200,
           headers: { 'Content-Type': 'application/json' },
         }),

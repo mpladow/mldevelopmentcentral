@@ -14,23 +14,13 @@ public static class IdentitySeeder
         IConfiguration configuration)
     {
         using var scope = services.CreateScope();
-        var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
         var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
         var dbContext = scope.ServiceProvider.GetRequiredService<MldevDashboardDbContext>();
 
-        foreach (var role in ApplicationRoles.All)
-        {
-            if (!await roleManager.RoleExistsAsync(role))
-            {
-                var roleResult = await roleManager.CreateAsync(new IdentityRole<Guid>(role));
-                if (!roleResult.Succeeded)
-                {
-                    throw new InvalidOperationException(BuildIdentityErrorMessage("role", roleResult.Errors));
-                }
-            }
-        }
-
-        await EnsureGlobalSystemAsync(dbContext);
+        var globalSystem = await EnsureGlobalSystemAsync(dbContext);
+        await EnsureGlobalPermissionsAsync(dbContext, globalSystem);
+        var globalAdminRole = await EnsureGlobalAdminRoleAsync(dbContext, globalSystem);
+        await EnsureGlobalAdminMinimumPermissionsAsync(dbContext, globalAdminRole);
 
         var seedAdmin = configuration.GetSection(SeedAdminOptions.SectionName).Get<SeedAdminOptions>()
             ?? new SeedAdminOptions();
@@ -43,16 +33,7 @@ public static class IdentitySeeder
         var existingUser = await userManager.FindByEmailAsync(seedAdmin.Email);
         if (existingUser is not null)
         {
-            if (!await userManager.IsInRoleAsync(existingUser, ApplicationRoles.Admin))
-            {
-                var addRoleResult = await userManager.AddToRoleAsync(existingUser, ApplicationRoles.Admin);
-                if (!addRoleResult.Succeeded)
-                {
-                    throw new InvalidOperationException(BuildIdentityErrorMessage("admin role assignment", addRoleResult.Errors));
-                }
-            }
-
-            await EnsureGlobalSystemAccessAsync(dbContext, existingUser.Id);
+            await EnsureGlobalAdminAccessAsync(dbContext, existingUser.Id, globalSystem.Id, globalAdminRole.Id);
             return;
         }
 
@@ -72,13 +53,7 @@ public static class IdentitySeeder
             throw new InvalidOperationException(BuildIdentityErrorMessage("admin user", createResult.Errors));
         }
 
-        var adminRoleResult = await userManager.AddToRoleAsync(adminUser, ApplicationRoles.Admin);
-        if (!adminRoleResult.Succeeded)
-        {
-            throw new InvalidOperationException(BuildIdentityErrorMessage("admin role assignment", adminRoleResult.Errors));
-        }
-
-        await EnsureGlobalSystemAccessAsync(dbContext, adminUser.Id);
+        await EnsureGlobalAdminAccessAsync(dbContext, adminUser.Id, globalSystem.Id, globalAdminRole.Id);
     }
 
     private static async Task<SystemDefinition> EnsureGlobalSystemAsync(MldevDashboardDbContext dbContext)
@@ -104,17 +79,115 @@ public static class IdentitySeeder
         return globalSystem;
     }
 
-    private static async Task EnsureGlobalSystemAccessAsync(
+    private static async Task EnsureGlobalPermissionsAsync(
         MldevDashboardDbContext dbContext,
-        Guid accountId)
+        SystemDefinition globalSystem)
     {
-        var globalSystem = await EnsureGlobalSystemAsync(dbContext);
-
-        if (!globalSystem.AccountAccesses.Any(access => access.AccountId == accountId))
+        foreach (var permissionDefinition in AppPermissions.Global)
         {
-            globalSystem.AccountAccesses.Add(new SystemAccountAccess { AccountId = accountId });
+            var permission = await dbContext.ApplicationPermissions
+                .SingleOrDefaultAsync(existingPermission =>
+                    existingPermission.PermissionKey == permissionDefinition.Key);
+
+            if (permission is null)
+            {
+                dbContext.ApplicationPermissions.Add(new ApplicationPermission
+                {
+                    SystemDefinitionId = globalSystem.Id,
+                    PermissionKey = permissionDefinition.Key,
+                    DisplayName = permissionDefinition.DisplayName,
+                    Category = permissionDefinition.Category
+                });
+                continue;
+            }
+
+            permission.SystemDefinitionId = globalSystem.Id;
+            permission.DisplayName = permissionDefinition.DisplayName;
+            permission.Category = permissionDefinition.Category;
+        }
+
+        await dbContext.SaveChangesAsync();
+    }
+
+    private static async Task<ApplicationRole> EnsureGlobalAdminRoleAsync(
+        MldevDashboardDbContext dbContext,
+        SystemDefinition globalSystem)
+    {
+        var globalAdminRole = await dbContext.ApplicationRoles
+            .Include(role => role.RolePermissions)
+            .SingleOrDefaultAsync(role => role.Name == ApplicationRoleNames.GlobalAdmin);
+
+        if (globalAdminRole is null)
+        {
+            globalAdminRole = new ApplicationRole
+            {
+                SystemDefinitionId = globalSystem.Id,
+                Name = ApplicationRoleNames.GlobalAdmin,
+                DisplayName = "Global Admin",
+                IsProtected = true,
+                SortOrder = 0
+            };
+
+            dbContext.ApplicationRoles.Add(globalAdminRole);
             await dbContext.SaveChangesAsync();
         }
+
+        globalAdminRole.SystemDefinitionId = globalSystem.Id;
+        globalAdminRole.IsProtected = true;
+        globalAdminRole.SortOrder = 0;
+        await dbContext.SaveChangesAsync();
+
+        return globalAdminRole;
+    }
+
+    private static async Task EnsureGlobalAdminMinimumPermissionsAsync(
+        MldevDashboardDbContext dbContext,
+        ApplicationRole globalAdminRole)
+    {
+        var minimumPermissions = await dbContext.ApplicationPermissions
+            .Where(permission => AppPermissions.GlobalAdminMinimum.Contains(permission.PermissionKey))
+            .ToArrayAsync();
+        var existingPermissionIds = await dbContext.ApplicationRolePermissions
+            .Where(rolePermission => rolePermission.ApplicationRoleId == globalAdminRole.Id)
+            .Select(rolePermission => rolePermission.ApplicationPermissionId)
+            .ToArrayAsync();
+
+        foreach (var permission in minimumPermissions)
+        {
+            if (!existingPermissionIds.Contains(permission.Id))
+            {
+                dbContext.ApplicationRolePermissions.Add(new ApplicationRolePermission
+                {
+                    ApplicationRoleId = globalAdminRole.Id,
+                    ApplicationPermissionId = permission.Id
+                });
+            }
+        }
+
+        await dbContext.SaveChangesAsync();
+    }
+
+    private static async Task EnsureGlobalAdminAccessAsync(
+        MldevDashboardDbContext dbContext,
+        Guid accountId,
+        int globalSystemId,
+        int globalAdminRoleId)
+    {
+        var hasRole = await dbContext.SystemAccountRoles.AnyAsync(accountRole =>
+            accountRole.AccountId == accountId &&
+            accountRole.ApplicationRoleId == globalAdminRoleId);
+        if (hasRole)
+        {
+            return;
+        }
+
+        dbContext.SystemAccountRoles.Add(new SystemAccountRole
+        {
+            AccountId = accountId,
+            SystemDefinitionId = globalSystemId,
+            ApplicationRoleId = globalAdminRoleId
+        });
+        await dbContext.SaveChangesAsync();
     }
 
     private static string BuildIdentityErrorMessage(

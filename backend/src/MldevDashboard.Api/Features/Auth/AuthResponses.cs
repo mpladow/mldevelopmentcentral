@@ -9,4 +9,5 @@ public sealed record CurrentUserResponse(
     Guid Id,
     string Email,
     string DisplayName,
-    string[] Roles);
+    string[] Roles,
+    string[] Permissions);
