@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using MldevDashboard.Api.Common;
 using MldevDashboard.Api.Features.Global.Systems;
 using MldevDashboard.Api.Features.Global.Systems.CreateSystem;
+using MldevDashboard.Api.Features.Global.Systems.DeleteSystem;
 using MldevDashboard.Api.Features.Global.Systems.GetSystemTheme;
 using MldevDashboard.Api.Features.Global.Systems.UpdateSystemTheme;
 using MldevDashboard.Infrastructure.Identity;
@@ -114,6 +115,69 @@ public sealed class SystemHandlerTests
         Assert.Equal(ApplicationResultStatus.Success, getResult.Status);
         Assert.NotNull(getResult.Value);
         Assert.Equal("#0f172a", getResult.Value.PrimaryColor);
+    }
+
+    [Fact]
+    public async Task DeleteSystemHandler_DeletesSystemRolesPermissionsAndAssignments()
+    {
+        var services = CreateServices();
+        var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
+        var dbContext = services.GetRequiredService<MldevDashboardDbContext>();
+        var account = await CreateUserAsync(userManager);
+        var system = new SystemDefinition { SystemKey = "warmaster", Label = "Warmaster" };
+        var role = new ApplicationRole
+        {
+            Name = "WarmasterAdmin",
+            DisplayName = "Warmaster Admin",
+            SystemDefinition = system
+        };
+        var permission = new ApplicationPermission
+        {
+            PermissionKey = "warmaster.menu.factions",
+            DisplayName = "Factions menu",
+            Category = "Menus",
+            SystemDefinition = system
+        };
+        role.RolePermissions.Add(new ApplicationRolePermission
+        {
+            ApplicationRole = role,
+            ApplicationPermission = permission
+        });
+        system.AccountRoles.Add(new SystemAccountRole
+        {
+            AccountId = account.Id,
+            ApplicationRole = role
+        });
+        dbContext.Systems.Add(system);
+        await dbContext.SaveChangesAsync();
+        var handler = new DeleteSystemHandler(dbContext);
+
+        var result = await handler.HandleAsync(system.Id, CancellationToken.None);
+
+        Assert.Equal(ApplicationResultStatus.Success, result.Status);
+        Assert.False(await dbContext.Systems.AnyAsync(existingSystem => existingSystem.Id == system.Id));
+        Assert.False(await dbContext.ApplicationRoles.AnyAsync(existingRole => existingRole.Name == "WarmasterAdmin"));
+        Assert.False(await dbContext.ApplicationPermissions.AnyAsync(existingPermission =>
+            existingPermission.PermissionKey == "warmaster.menu.factions"));
+        Assert.False(await dbContext.SystemAccountRoles.AnyAsync(accountRole => accountRole.AccountId == account.Id));
+        Assert.False(await dbContext.ApplicationRolePermissions.AnyAsync());
+    }
+
+    [Fact]
+    public async Task DeleteSystemHandler_ReturnsBadRequestForGlobalSystem()
+    {
+        var services = CreateServices();
+        var dbContext = services.GetRequiredService<MldevDashboardDbContext>();
+        var globalSystem = new SystemDefinition { SystemKey = "global", Label = "Global" };
+        dbContext.Systems.Add(globalSystem);
+        await dbContext.SaveChangesAsync();
+        var handler = new DeleteSystemHandler(dbContext);
+
+        var result = await handler.HandleAsync(globalSystem.Id, CancellationToken.None);
+
+        Assert.Equal(ApplicationResultStatus.BadRequest, result.Status);
+        Assert.Equal("The Global system cannot be deleted.", result.Message);
+        Assert.True(await dbContext.Systems.AnyAsync(system => system.Id == globalSystem.Id));
     }
 
     private static ServiceProvider CreateServices()

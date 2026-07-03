@@ -1,1 +1,1 @@
-export type ActiveView = 'accounts' | 'systems' | 'roles';
+export type ActiveView = 'accounts' | 'systems' | 'roles' | 'factions' | 'units';

@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using MldevDashboard.Api.Common;
 using MldevDashboard.Api.Features.Global.Accounts.CreateAccount;
+using MldevDashboard.Api.Features.Global.Accounts.UpdateAccount;
 using MldevDashboard.Api.Identity;
 using MldevDashboard.Infrastructure.Identity;
 using MldevDashboard.Infrastructure.Persistence;
@@ -14,7 +15,7 @@ namespace MldevDashboard.Tests.Features.Accounts;
 public sealed class AccountHandlerTests
 {
     [Fact]
-    public async Task CreateAccountHandler_CreatesUserWithRequestedRole()
+    public async Task CreateAccountHandler_CreatesUserWithRequestedRoles()
     {
         var services = CreateServices();
         await SeedRolesAsync(services);
@@ -28,7 +29,7 @@ public sealed class AccountHandlerTests
                 "user@example.com",
                 "User Example",
                 "Password1",
-                [ApplicationRoleNames.GlobalAdmin]),
+                [ApplicationRoleNames.GlobalAdmin, ApplicationRoleNames.WarmasterAdmin]),
             CancellationToken.None);
 
         Assert.Equal(ApplicationResultStatus.Created, result.Status);
@@ -38,9 +39,67 @@ public sealed class AccountHandlerTests
         var user = await userManager.FindByEmailAsync("user@example.com");
 
         Assert.NotNull(user);
-        Assert.True(await dbContext.SystemAccountRoles.AnyAsync(accountRole =>
-            accountRole.AccountId == user.Id &&
-            accountRole.ApplicationRole.Name == ApplicationRoleNames.GlobalAdmin));
+        var assignedRoles = await dbContext.SystemAccountRoles
+            .Where(accountRole => accountRole.AccountId == user.Id)
+            .Select(accountRole => accountRole.ApplicationRole.Name)
+            .OrderBy(role => role)
+            .ToArrayAsync();
+
+        Assert.Equal(
+            [ApplicationRoleNames.GlobalAdmin, ApplicationRoleNames.WarmasterAdmin],
+            assignedRoles);
+    }
+
+    [Fact]
+    public async Task UpdateAccountHandler_ReplacesExistingRolesWithRequestedRoles()
+    {
+        var services = CreateServices();
+        await SeedRolesAsync(services);
+        var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
+        var dbContext = services.GetRequiredService<MldevDashboardDbContext>();
+        var appAuthorizationService = services.GetRequiredService<AppAuthorizationService>();
+        var handler = new UpdateAccountHandler(userManager, dbContext, appAuthorizationService);
+        var user = new ApplicationUser
+        {
+            UserName = "user@example.com",
+            Email = "user@example.com",
+            EmailConfirmed = true,
+            DisplayName = "User Example"
+        };
+        var createResult = await userManager.CreateAsync(user, "Password1");
+        Assert.True(createResult.Succeeded);
+
+        var initialRole = await dbContext.ApplicationRoles
+            .SingleAsync(role => role.Name == ApplicationRoleNames.GlobalViewer);
+        dbContext.SystemAccountRoles.Add(new SystemAccountRole
+        {
+            AccountId = user.Id,
+            SystemDefinitionId = initialRole.SystemDefinitionId,
+            ApplicationRoleId = initialRole.Id
+        });
+        await dbContext.SaveChangesAsync();
+
+        var result = await handler.HandleAsync(
+            user.Id,
+            new UpdateAccountRequest(
+                "updated@example.com",
+                "Updated Example",
+                [ApplicationRoleNames.GlobalAdmin, ApplicationRoleNames.WarmasterAdmin]),
+            CancellationToken.None);
+
+        Assert.Equal(ApplicationResultStatus.Success, result.Status);
+        Assert.NotNull(result.Value);
+        Assert.Equal("updated@example.com", result.Value.Email);
+
+        var assignedRoles = await dbContext.SystemAccountRoles
+            .Where(accountRole => accountRole.AccountId == user.Id)
+            .Select(accountRole => accountRole.ApplicationRole.Name)
+            .OrderBy(role => role)
+            .ToArrayAsync();
+
+        Assert.Equal(
+            [ApplicationRoleNames.GlobalAdmin, ApplicationRoleNames.WarmasterAdmin],
+            assignedRoles);
     }
 
     [Fact]
@@ -105,10 +164,34 @@ public sealed class AccountHandlerTests
         {
             Name = ApplicationRoleNames.GlobalAdmin,
             DisplayName = "Global Admin",
-            IsProtected = true
+            IsProtected = true,
+            SortOrder = 0
+        });
+        globalSystem.Roles.Add(new ApplicationRole
+        {
+            Name = ApplicationRoleNames.GlobalViewer,
+            DisplayName = "Global Viewer",
+            IsProtected = true,
+            SortOrder = 2
+        });
+
+        var warmasterSystem = new SystemDefinition
+        {
+            SystemKey = "warmaster",
+            Label = "Warmaster",
+            SortOrder = 1,
+            IsActive = true
+        };
+        warmasterSystem.Roles.Add(new ApplicationRole
+        {
+            Name = ApplicationRoleNames.WarmasterAdmin,
+            DisplayName = "Warmaster Admin",
+            IsProtected = true,
+            SortOrder = 0
         });
 
         dbContext.Systems.Add(globalSystem);
+        dbContext.Systems.Add(warmasterSystem);
         await dbContext.SaveChangesAsync();
     }
 }

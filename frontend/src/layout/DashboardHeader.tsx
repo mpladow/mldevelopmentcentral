@@ -1,16 +1,23 @@
 import { Box, Paper, Stack, Typography } from '@mui/material';
 import type { ActiveView } from '../types/navigation';
+import type { AvailableSystem } from '../types/systems';
 
 type DashboardHeaderProps = {
+  activeSystem: AvailableSystem | null;
   activeView: ActiveView;
 };
 
-export function DashboardHeader({ activeView }: DashboardHeaderProps) {
+export function DashboardHeader({ activeSystem, activeView }: DashboardHeaderProps) {
   const activeTitle = activeView === 'accounts'
     ? 'Accounts'
     : activeView === 'systems'
       ? 'Systems'
-      : 'Roles';
+      : activeView === 'roles'
+        ? 'Roles'
+        : activeView === 'factions'
+          ? 'Factions'
+          : 'Units';
+  const activeSystemLabel = activeSystem?.label ?? 'Systems';
 
   return (
     <Box
@@ -25,20 +32,20 @@ export function DashboardHeader({ activeView }: DashboardHeaderProps) {
     >
       <Box>
         <Typography color="primary" sx={{ fontWeight: 900, textTransform: 'uppercase' }} variant="caption">
-          Global
+          {activeSystemLabel}
         </Typography>
         <Typography component="h1" variant="h1">
           {activeTitle}
         </Typography>
       </Box>
       <Stack
-        aria-label="Global summary"
+        aria-label={`${activeSystemLabel} summary`}
         direction={{ xs: 'column', sm: 'row' }}
         spacing={1.5}
         sx={{ width: { xs: '100%', lg: 'auto' } }}
       >
         {[
-          ['System', 'Global'],
+          ['System', activeSystemLabel],
           ['Mode', 'Admin'],
           ['Auth', 'Identity'],
         ].map(([label, value]) => (

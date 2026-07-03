@@ -1,4 +1,5 @@
 using MldevDashboard.Api.Common;
+using MldevDashboard.Api.Features.Global.Roles.CreatePermission;
 using MldevDashboard.Api.Features.Global.Roles.CreateRole;
 using MldevDashboard.Api.Features.Global.Roles.ListRoles;
 using MldevDashboard.Api.Features.Global.Roles.ListPermissions;
@@ -16,6 +17,7 @@ public static class RoleEndpoints
 
         group.MapGet("/", ListRolesEndpoint.HandleAsync);
         group.MapGet("/permissions", ListPermissionsEndpoint.HandleAsync);
+        group.MapPost("/permissions", CreatePermissionEndpoint.HandleAsync);
         group.MapPost("/", CreateRoleEndpoint.HandleAsync);
         group.MapPut("/{id:int}", UpdateRoleEndpoint.HandleAsync);
 

@@ -75,6 +75,28 @@ export function useSystems(token: string) {
 		[loadSystems, token],
 	);
 
+	const deleteSystem = useCallback(
+		async (systemId: number) => {
+			setMessage('');
+
+			const response = await fetch(`${apiBaseUrl}/api/systems/${systemId}`, {
+				method: 'DELETE',
+				headers: { Authorization: `Bearer ${token}` },
+			});
+
+			if (!response.ok) {
+				const body = await response.json().catch(() => null) as { message?: string } | null;
+				setMessage(body?.message ?? 'Unable to delete the system.');
+				return false;
+			}
+
+			setMessage('System deleted.');
+			await loadSystems();
+			return true;
+		},
+		[loadSystems, token],
+	);
+
 	return {
 		systems,
 		accounts,
@@ -82,5 +104,6 @@ export function useSystems(token: string) {
 		loadSystems,
 		loadAccounts,
 		saveSystem,
+		deleteSystem,
 	};
 }

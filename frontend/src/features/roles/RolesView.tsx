@@ -21,7 +21,7 @@ import {
 } from '@mui/material';
 import { ArrowLeft, Edit3, Plus, Save } from 'lucide-react';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import type { Role } from '../../types/roles';
+import type { CreatePermissionPayload, Role } from '../../types/roles';
 import { useRoles } from './useRoles';
 
 type RolesViewProps = {
@@ -30,6 +30,7 @@ type RolesViewProps = {
 
 type RoleEditorMode =
   | { type: 'list' }
+  | { type: 'permission' }
   | { type: 'create' }
   | { type: 'edit'; role: Role };
 
@@ -47,8 +48,16 @@ const emptyRoleForm: RoleFormState = {
   permissions: [],
 };
 
+const emptyPermissionForm: CreatePermissionPayload = {
+  systemId: 0,
+  permissionKey: '',
+  displayName: '',
+  category: 'Menus',
+};
+
 export function RolesView({ token }: RolesViewProps) {
   const {
+    createPermission,
     createRole,
     loadPermissions,
     loadRoles,
@@ -59,8 +68,25 @@ export function RolesView({ token }: RolesViewProps) {
   } = useRoles(token);
   const [mode, setMode] = useState<RoleEditorMode>({ type: 'list' });
   const [form, setForm] = useState<RoleFormState>(emptyRoleForm);
+  const [permissionForm, setPermissionForm] = useState<CreatePermissionPayload>(emptyPermissionForm);
 
   const systems = useMemo(
+    () => Array.from(
+      new Map([
+        ...roles.map((role) => [role.systemId, {
+          id: role.systemId,
+          label: role.systemLabel,
+        }] as const),
+        ...permissions.map((permission) => [permission.systemId, {
+          id: permission.systemId,
+          label: permission.systemLabel,
+        }] as const),
+      ].map(([systemId, system]) => [systemId, system])).values(),
+    ),
+    [permissions, roles],
+  );
+
+  const roleSystems = useMemo(
     () => Array.from(
       new Map(roles.map((role) => [role.systemId, {
         id: role.systemId,
@@ -78,9 +104,14 @@ export function RolesView({ token }: RolesViewProps) {
   }, [loadPermissions, loadRoles]);
 
   function openCreateRole() {
-    const systemId = systems[0]?.id ?? 0;
+    const systemId = roleSystems[0]?.id ?? 0;
     setForm({ ...emptyRoleForm, systemId });
     setMode({ type: 'create' });
+  }
+
+  function openCreatePermission() {
+    setPermissionForm({ ...emptyPermissionForm, systemId: systems[0]?.id ?? 0 });
+    setMode({ type: 'permission' });
   }
 
   function openEditRole(role: Role) {
@@ -109,7 +140,7 @@ export function RolesView({ token }: RolesViewProps) {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (mode.type === 'list') {
+    if (mode.type !== 'create' && mode.type !== 'edit') {
       return;
     }
 
@@ -123,6 +154,71 @@ export function RolesView({ token }: RolesViewProps) {
     if (didSave) {
       setMode({ type: 'list' });
     }
+  }
+
+  async function handlePermissionSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const didSave = await createPermission(permissionForm);
+    if (didSave) {
+      setMode({ type: 'list' });
+    }
+  }
+
+  if (mode.type === 'permission') {
+    return (
+      <Paper component="section" sx={{ display: 'grid', gap: 3, maxWidth: 900, p: 3 }} variant="outlined">
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ alignItems: 'flex-start', justifyContent: 'space-between' }}>
+          <Box>
+            <Typography component="h2" variant="h2">Create permission</Typography>
+            <Typography color="text.secondary">Register a system-scoped permission key that roles can assign.</Typography>
+          </Box>
+          <Button onClick={closeEditor} startIcon={<ArrowLeft size={16} />} type="button" variant="outlined">
+            Back
+          </Button>
+        </Stack>
+
+        <Box component="form" onSubmit={handlePermissionSubmit} sx={{ display: 'grid', gap: 2.5, maxWidth: 640 }}>
+          <FormControl>
+            <TextField
+              label="System"
+              onChange={(event) => setPermissionForm((value) => ({ ...value, systemId: Number(event.target.value) }))}
+              select
+              value={permissionForm.systemId}
+            >
+              {systems.map((system) => (
+                <MenuItem key={system.id} value={system.id}>{system.label}</MenuItem>
+              ))}
+            </TextField>
+          </FormControl>
+          <TextField
+            label="Permission key"
+            onChange={(event) => setPermissionForm((value) => ({ ...value, permissionKey: event.target.value }))}
+            placeholder="warmaster.menu.factions"
+            required
+            value={permissionForm.permissionKey}
+          />
+          <TextField
+            label="Display name"
+            onChange={(event) => setPermissionForm((value) => ({ ...value, displayName: event.target.value }))}
+            required
+            value={permissionForm.displayName}
+          />
+          <TextField
+            label="Category"
+            onChange={(event) => setPermissionForm((value) => ({ ...value, category: event.target.value }))}
+            required
+            value={permissionForm.category}
+          />
+
+          <Button startIcon={<Plus size={16} />} sx={{ justifySelf: 'start' }} type="submit" variant="contained">
+            Create permission
+          </Button>
+        </Box>
+
+        {message && <Alert severity="info">{message}</Alert>}
+      </Paper>
+    );
   }
 
   if (mode.type !== 'list') {
@@ -209,7 +305,10 @@ export function RolesView({ token }: RolesViewProps) {
         </Box>
         <Stack direction="row" spacing={1}>
           <Button onClick={loadRoles} type="button" variant="outlined">Refresh</Button>
-          <Button disabled={systems.length === 0} onClick={openCreateRole} startIcon={<Plus size={16} />} type="button" variant="contained">
+          <Button disabled={systems.length === 0} onClick={openCreatePermission} startIcon={<Plus size={16} />} type="button" variant="outlined">
+            Create permission
+          </Button>
+          <Button disabled={roleSystems.length === 0} onClick={openCreateRole} startIcon={<Plus size={16} />} type="button" variant="contained">
             Create role
           </Button>
         </Stack>

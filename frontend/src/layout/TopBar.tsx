@@ -18,20 +18,25 @@ import type { AvailableSystem } from '../types/systems';
 import { getInitials } from '../utils/getInitials';
 
 type TopBarProps = {
+  activeSystemKey: string;
   isSidebarCollapsed: boolean;
+  onActiveSystemKeyChange: (systemKey: string) => void;
+  onAvailableSystemsChange: (systems: AvailableSystem[]) => void;
   onToggleSidebar: () => void;
   systemListVersion: number;
 };
 
 export function TopBar({
+  activeSystemKey,
   isSidebarCollapsed,
+  onActiveSystemKeyChange,
+  onAvailableSystemsChange,
   onToggleSidebar,
   systemListVersion,
 }: TopBarProps) {
   const { accessToken, user } = useAuthenticatedSession();
   const { logout } = useAuth();
   const [availableSystems, setAvailableSystems] = useState<AvailableSystem[]>([]);
-  const [selectedSystemKey, setSelectedSystemKey] = useState('');
 
   useEffect(() => {
     async function loadAvailableSystems() {
@@ -41,17 +46,30 @@ export function TopBar({
 
       if (!response.ok) {
         setAvailableSystems([]);
-        setSelectedSystemKey('');
+        onAvailableSystemsChange([]);
+        onActiveSystemKeyChange('');
         return;
       }
 
       const systems = (await response.json()) as AvailableSystem[];
       setAvailableSystems(systems);
-      setSelectedSystemKey((currentValue) => currentValue || systems[0]?.systemKey || '');
+      onAvailableSystemsChange(systems);
+
+      const matchingActiveSystem = systems.find((system) =>
+        system.systemKey.toLowerCase() === activeSystemKey.toLowerCase()
+      );
+      if (matchingActiveSystem && matchingActiveSystem.systemKey !== activeSystemKey) {
+        onActiveSystemKeyChange(matchingActiveSystem.systemKey);
+        return;
+      }
+
+      if (!matchingActiveSystem) {
+        onActiveSystemKeyChange(systems[0]?.systemKey || '');
+      }
     }
 
     void loadAvailableSystems();
-  }, [accessToken, systemListVersion]);
+  }, [accessToken, activeSystemKey, onActiveSystemKeyChange, onAvailableSystemsChange, systemListVersion]);
 
   return (
     <AppBar color="inherit" elevation={0} position="sticky" sx={{ borderBottom: '1px solid', borderColor: 'divider' }}>
@@ -92,8 +110,8 @@ export function TopBar({
         <FormControl size="small" sx={{ minWidth: { xs: 132, sm: 180 } }}>
           <NativeSelect
             inputProps={{ 'aria-label': 'Select system' }}
-            onChange={(event) => setSelectedSystemKey(event.target.value)}
-            value={selectedSystemKey}
+            onChange={(event) => onActiveSystemKeyChange(event.target.value)}
+            value={activeSystemKey}
           >
             {availableSystems.length === 0 ? (
               <option value="">No systems</option>

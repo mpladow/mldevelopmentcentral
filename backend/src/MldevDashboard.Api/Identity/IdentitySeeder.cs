@@ -17,10 +17,30 @@ public static class IdentitySeeder
         var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
         var dbContext = scope.ServiceProvider.GetRequiredService<MldevDashboardDbContext>();
 
-        var globalSystem = await EnsureGlobalSystemAsync(dbContext);
-        await EnsureGlobalPermissionsAsync(dbContext, globalSystem);
-        var globalAdminRole = await EnsureGlobalAdminRoleAsync(dbContext, globalSystem);
-        await EnsureGlobalAdminMinimumPermissionsAsync(dbContext, globalAdminRole);
+        var globalSystem = await EnsureSystemAsync(dbContext, "global", "Global", 0);
+        await EnsurePermissionsAsync(dbContext, globalSystem, AppPermissions.Global);
+        await EnsureRoleAsync(dbContext, globalSystem, ApplicationRoleNames.GlobalUser, "Global User", 1);
+        await EnsureRoleAsync(dbContext, globalSystem, ApplicationRoleNames.GlobalViewer, "Global Viewer", 2);
+        var globalAdminRole = await EnsureRoleAsync(
+            dbContext,
+            globalSystem,
+            ApplicationRoleNames.GlobalAdmin,
+            "Global Admin",
+            0,
+            isProtected: true);
+        await EnsureRolePermissionsAsync(dbContext, globalAdminRole, AppPermissions.GlobalAdminMinimum);
+
+        var warmasterSystem = await EnsureSystemAsync(dbContext, "warmaster", "Warmaster", 1);
+        await EnsurePermissionsAsync(dbContext, warmasterSystem, AppPermissions.Warmaster);
+        await EnsureRoleAsync(dbContext, warmasterSystem, ApplicationRoleNames.WarmasterUser, "Warmaster User", 1);
+        await EnsureRoleAsync(dbContext, warmasterSystem, ApplicationRoleNames.WarmasterViewer, "Warmaster Viewer", 2);
+        var warmasterAdminRole = await EnsureRoleAsync(
+            dbContext,
+            warmasterSystem,
+            ApplicationRoleNames.WarmasterAdmin,
+            "Warmaster Admin",
+            0);
+        await EnsureRolePermissionsAsync(dbContext, warmasterAdminRole, AppPermissions.WarmasterAdminDefault);
 
         var seedAdmin = configuration.GetSection(SeedAdminOptions.SectionName).Get<SeedAdminOptions>()
             ?? new SeedAdminOptions();
@@ -56,34 +76,45 @@ public static class IdentitySeeder
         await EnsureGlobalAdminAccessAsync(dbContext, adminUser.Id, globalSystem.Id, globalAdminRole.Id);
     }
 
-    private static async Task<SystemDefinition> EnsureGlobalSystemAsync(MldevDashboardDbContext dbContext)
+    private static async Task<SystemDefinition> EnsureSystemAsync(
+        MldevDashboardDbContext dbContext,
+        string systemKey,
+        string label,
+        int sortOrder)
     {
-        var globalSystem = await dbContext.Systems
+        var system = await dbContext.Systems
             .Include(system => system.AccountAccesses)
-            .SingleOrDefaultAsync(system => system.SystemKey == "global");
+            .SingleOrDefaultAsync(system => system.SystemKey == systemKey);
 
-        if (globalSystem is null)
+        if (system is null)
         {
-            globalSystem = new SystemDefinition
+            system = new SystemDefinition
             {
-                SystemKey = "global",
-                Label = "Global",
-                SortOrder = 0,
+                SystemKey = systemKey,
+                Label = label,
+                SortOrder = sortOrder,
                 IsActive = true
             };
 
-            dbContext.Systems.Add(globalSystem);
+            dbContext.Systems.Add(system);
             await dbContext.SaveChangesAsync();
+            return system;
         }
 
-        return globalSystem;
+        system.Label = label;
+        system.SortOrder = sortOrder;
+        system.IsActive = true;
+        await dbContext.SaveChangesAsync();
+
+        return system;
     }
 
-    private static async Task EnsureGlobalPermissionsAsync(
+    private static async Task EnsurePermissionsAsync(
         MldevDashboardDbContext dbContext,
-        SystemDefinition globalSystem)
+        SystemDefinition system,
+        PermissionDefinition[] permissionDefinitions)
     {
-        foreach (var permissionDefinition in AppPermissions.Global)
+        foreach (var permissionDefinition in permissionDefinitions)
         {
             var permission = await dbContext.ApplicationPermissions
                 .SingleOrDefaultAsync(existingPermission =>
@@ -93,7 +124,7 @@ public static class IdentitySeeder
             {
                 dbContext.ApplicationPermissions.Add(new ApplicationPermission
                 {
-                    SystemDefinitionId = globalSystem.Id,
+                    SystemDefinitionId = system.Id,
                     PermissionKey = permissionDefinition.Key,
                     DisplayName = permissionDefinition.DisplayName,
                     Category = permissionDefinition.Category
@@ -101,7 +132,7 @@ public static class IdentitySeeder
                 continue;
             }
 
-            permission.SystemDefinitionId = globalSystem.Id;
+            permission.SystemDefinitionId = system.Id;
             permission.DisplayName = permissionDefinition.DisplayName;
             permission.Category = permissionDefinition.Category;
         }
@@ -109,56 +140,62 @@ public static class IdentitySeeder
         await dbContext.SaveChangesAsync();
     }
 
-    private static async Task<ApplicationRole> EnsureGlobalAdminRoleAsync(
+    private static async Task<ApplicationRole> EnsureRoleAsync(
         MldevDashboardDbContext dbContext,
-        SystemDefinition globalSystem)
+        SystemDefinition system,
+        string name,
+        string displayName,
+        int sortOrder,
+        bool isProtected = false)
     {
-        var globalAdminRole = await dbContext.ApplicationRoles
+        var role = await dbContext.ApplicationRoles
             .Include(role => role.RolePermissions)
-            .SingleOrDefaultAsync(role => role.Name == ApplicationRoleNames.GlobalAdmin);
+            .SingleOrDefaultAsync(role => role.Name == name);
 
-        if (globalAdminRole is null)
+        if (role is null)
         {
-            globalAdminRole = new ApplicationRole
+            role = new ApplicationRole
             {
-                SystemDefinitionId = globalSystem.Id,
-                Name = ApplicationRoleNames.GlobalAdmin,
-                DisplayName = "Global Admin",
-                IsProtected = true,
-                SortOrder = 0
+                SystemDefinitionId = system.Id,
+                Name = name,
+                DisplayName = displayName,
+                IsProtected = isProtected,
+                SortOrder = sortOrder
             };
 
-            dbContext.ApplicationRoles.Add(globalAdminRole);
+            dbContext.ApplicationRoles.Add(role);
             await dbContext.SaveChangesAsync();
+            return role;
         }
 
-        globalAdminRole.SystemDefinitionId = globalSystem.Id;
-        globalAdminRole.IsProtected = true;
-        globalAdminRole.SortOrder = 0;
+        role.SystemDefinitionId = system.Id;
+        role.IsProtected = isProtected;
+        role.SortOrder = sortOrder;
         await dbContext.SaveChangesAsync();
 
-        return globalAdminRole;
+        return role;
     }
 
-    private static async Task EnsureGlobalAdminMinimumPermissionsAsync(
+    private static async Task EnsureRolePermissionsAsync(
         MldevDashboardDbContext dbContext,
-        ApplicationRole globalAdminRole)
+        ApplicationRole role,
+        string[] permissionKeys)
     {
-        var minimumPermissions = await dbContext.ApplicationPermissions
-            .Where(permission => AppPermissions.GlobalAdminMinimum.Contains(permission.PermissionKey))
+        var permissions = await dbContext.ApplicationPermissions
+            .Where(permission => permissionKeys.Contains(permission.PermissionKey))
             .ToArrayAsync();
         var existingPermissionIds = await dbContext.ApplicationRolePermissions
-            .Where(rolePermission => rolePermission.ApplicationRoleId == globalAdminRole.Id)
+            .Where(rolePermission => rolePermission.ApplicationRoleId == role.Id)
             .Select(rolePermission => rolePermission.ApplicationPermissionId)
             .ToArrayAsync();
 
-        foreach (var permission in minimumPermissions)
+        foreach (var permission in permissions)
         {
             if (!existingPermissionIds.Contains(permission.Id))
             {
                 dbContext.ApplicationRolePermissions.Add(new ApplicationRolePermission
                 {
-                    ApplicationRoleId = globalAdminRole.Id,
+                    ApplicationRoleId = role.Id,
                     ApplicationPermissionId = permission.Id
                 });
             }

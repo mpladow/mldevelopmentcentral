@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { apiBaseUrl } from '../../config/api';
-import type { PermissionCatalogItem, Role } from '../../types/roles';
+import type { CreatePermissionPayload, PermissionCatalogItem, Role } from '../../types/roles';
 
 export function useRoles(token: string) {
   const [permissions, setPermissions] = useState<PermissionCatalogItem[]>([]);
@@ -60,6 +60,28 @@ export function useRoles(token: string) {
     return true;
   }, [loadRoles, token]);
 
+  const createPermission = useCallback(async (payload: CreatePermissionPayload) => {
+    setMessage('');
+
+    const response = await fetch(`${apiBaseUrl}/api/roles/permissions`, {
+      body: JSON.stringify(payload),
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      method: 'POST',
+    });
+
+    if (!response.ok) {
+      const body = await response.json().catch(() => null) as { message?: string; errors?: string[] } | null;
+      setMessage(body?.message ?? body?.errors?.join(' ') ?? 'Unable to create permission.');
+      return false;
+    }
+
+    await loadPermissions();
+    return true;
+  }, [loadPermissions, token]);
+
   const updateRole = useCallback(async (
     roleId: number,
     payload: { displayName: string; permissions: string[] },
@@ -85,6 +107,7 @@ export function useRoles(token: string) {
   }, [loadRoles, token]);
 
   return {
+    createPermission,
     createRole,
     loadPermissions,
     loadRoles,

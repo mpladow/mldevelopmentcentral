@@ -1,5 +1,6 @@
 using MldevDashboard.Api.Common;
 using MldevDashboard.Api.Features.Global.Systems.CreateSystem;
+using MldevDashboard.Api.Features.Global.Systems.DeleteSystem;
 using MldevDashboard.Api.Features.Global.Systems.GetSystemTheme;
 using MldevDashboard.Api.Features.Global.Systems.ListAvailableSystems;
 using MldevDashboard.Api.Features.Global.Systems.ListSystems;
@@ -24,6 +25,8 @@ public static class SystemEndpoints
         adminGroup.MapGet("/", ListSystemsEndpoint.HandleAsync);
         adminGroup.MapPost("/", CreateSystemEndpoint.HandleAsync);
         adminGroup.MapPut("/{id:int}", UpdateSystemEndpoint.HandleAsync);
+        adminGroup.MapDelete("/{id:int}", DeleteSystemEndpoint.HandleAsync)
+            .RequireAuthorization(policy => policy.RequireRole(ApplicationRoleNames.GlobalAdmin));
         adminGroup.MapGet("/{id:int}/theme", GetSystemThemeEndpoint.HandleAsync);
         adminGroup.MapPut("/{id:int}/theme", UpdateSystemThemeEndpoint.HandleAsync);
 

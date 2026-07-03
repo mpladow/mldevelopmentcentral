@@ -18,3 +18,10 @@ export type PermissionCatalogItem = {
   displayName: string;
   category: string;
 };
+
+export type CreatePermissionPayload = {
+  systemId: number;
+  permissionKey: string;
+  displayName: string;
+  category: string;
+};

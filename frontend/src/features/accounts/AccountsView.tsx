@@ -2,10 +2,16 @@ import {
   Alert,
   Box,
   Button,
+  Checkbox,
+  Chip,
   FormControl,
   InputLabel,
-  NativeSelect,
+  ListItemText,
+  ListSubheader,
+  MenuItem,
+  OutlinedInput,
   Paper,
+  Select,
   Stack,
   Table,
   TableBody,
@@ -21,6 +27,7 @@ import { FormEvent, useEffect, useState } from 'react';
 import { permissions } from '../../config/permissions';
 import type { Account } from '../../types/accounts';
 import type { SessionUser } from '../../types/auth';
+import type { Role } from '../../types/roles';
 import { useRoles } from '../roles/useRoles';
 import { useAccounts } from './useAccounts';
 
@@ -33,7 +40,7 @@ type AccountFormState = {
   email: string;
   displayName: string;
   password: string;
-  role: string;
+  roles: string[];
 };
 
 type AccountsViewProps = {
@@ -45,7 +52,7 @@ const emptyAccountForm: AccountFormState = {
   email: '',
   displayName: '',
   password: '',
-  role: '',
+  roles: [],
 };
 
 export function AccountsView({ token, user }: AccountsViewProps) {
@@ -54,6 +61,8 @@ export function AccountsView({ token, user }: AccountsViewProps) {
   const canManageAccounts = user.permissions.includes(permissions.globalAccountsManage);
   const { accounts, message, clearMessage, loadAccounts, createAccount, updateAccount } = useAccounts(token);
   const { roles, loadRoles } = useRoles(token);
+  const groupedRoles = groupRolesBySystem(roles);
+  const rolesByName = new Map(roles.map((role) => [role.name, role]));
 
   useEffect(() => {
     void loadAccounts();
@@ -62,7 +71,7 @@ export function AccountsView({ token, user }: AccountsViewProps) {
 
   function openCreateAccount() {
     clearMessage();
-    setForm({ ...emptyAccountForm, role: roles[0]?.name ?? '' });
+    setForm(emptyAccountForm);
     setMode({ type: 'create' });
   }
 
@@ -72,7 +81,7 @@ export function AccountsView({ token, user }: AccountsViewProps) {
       email: account.email,
       displayName: account.displayName,
       password: '',
-      role: account.roles[0] ?? roles[0]?.name ?? '',
+      roles: account.roles,
     });
     setMode({ type: 'edit', account });
   }
@@ -90,7 +99,7 @@ export function AccountsView({ token, user }: AccountsViewProps) {
       email: form.email,
       displayName: form.displayName,
       password: form.password,
-      roles: form.role ? [form.role] : [],
+      roles: form.roles,
     });
 
     if (!created) {
@@ -113,7 +122,7 @@ export function AccountsView({ token, user }: AccountsViewProps) {
     const updated = await updateAccount(mode.account.id, {
       email: form.email,
       displayName: form.displayName,
-      roles: form.role ? [form.role] : [],
+      roles: form.roles,
     });
 
     if (!updated) {
@@ -172,19 +181,47 @@ export function AccountsView({ token, user }: AccountsViewProps) {
             />
           )}
           <FormControl>
-            <InputLabel variant="standard">Role</InputLabel>
-            <NativeSelect
-              inputProps={{ 'aria-label': 'Account role' }}
-              onChange={(event) => setForm((value) => ({ ...value, role: event.target.value }))}
-              value={form.role}
+            <InputLabel id="account-roles-label">Roles</InputLabel>
+            <Select
+              displayEmpty
+              input={<OutlinedInput label="Roles" />}
+              inputProps={{ 'aria-label': 'Account roles' }}
+              labelId="account-roles-label"
+              multiple
+              onChange={(event) => {
+                const nextRoles = event.target.value;
+                setForm((value) => ({
+                  ...value,
+                  roles: typeof nextRoles === 'string' ? nextRoles.split(',') : nextRoles,
+                }));
+              }}
+              renderValue={(selected) => (
+                selected.length === 0 ? (
+                  <Typography color="text.secondary">No roles selected</Typography>
+                ) : (
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
+                    {selected.map((roleName) => (
+                      <Chip
+                        key={roleName}
+                        label={getRoleDisplayLabel(rolesByName.get(roleName), roleName)}
+                        size="small"
+                      />
+                    ))}
+                  </Box>
+                )
+              )}
+              value={form.roles}
             >
-              <option value="">No role</option>
-              {roles.map((role) => (
-                <option key={role.id} value={role.name}>
-                  {role.displayName} ({role.systemLabel})
-                </option>
-              ))}
-            </NativeSelect>
+              {groupedRoles.flatMap((group) => [
+                <ListSubheader key={`${group.systemKey}-header`}>{group.systemLabel}</ListSubheader>,
+                ...group.roles.map((role) => (
+                  <MenuItem key={role.id} value={role.name}>
+                    <Checkbox checked={form.roles.includes(role.name)} />
+                    <ListItemText primary={role.displayName} secondary={role.name} />
+                  </MenuItem>
+                )),
+              ])}
+            </Select>
           </FormControl>
           <Button startIcon={isCreateMode ? <UserPlus size={16} /> : <Save size={16} />} type="submit" variant="contained">
             {isCreateMode ? 'Create account' : 'Save account'}
@@ -239,7 +276,7 @@ export function AccountsView({ token, user }: AccountsViewProps) {
                     <Typography sx={{ fontWeight: 800 }}>{account.displayName}</Typography>
                   </TableCell>
                   <TableCell>{account.email}</TableCell>
-                  <TableCell>{account.roles.join(', ')}</TableCell>
+                  <TableCell>{account.roles.length === 0 ? 'No roles assigned' : account.roles.join(', ')}</TableCell>
                   {canManageAccounts && (
                     <TableCell align="right">
                       <Button
@@ -261,4 +298,28 @@ export function AccountsView({ token, user }: AccountsViewProps) {
       </TableContainer>
     </Paper>
   );
+}
+
+function groupRolesBySystem(roles: Role[]) {
+  const groups = new Map<number, { systemKey: string; systemLabel: string; roles: Role[] }>();
+
+  roles.forEach((role) => {
+    const group = groups.get(role.systemId);
+    if (group) {
+      group.roles.push(role);
+      return;
+    }
+
+    groups.set(role.systemId, {
+      systemKey: role.systemKey,
+      systemLabel: role.systemLabel,
+      roles: [role],
+    });
+  });
+
+  return Array.from(groups.values());
+}
+
+function getRoleDisplayLabel(role: Role | undefined, fallbackName: string) {
+  return role ? `${role.systemLabel} / ${role.displayName}` : fallbackName;
 }
