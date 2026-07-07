@@ -1,5 +1,6 @@
 using MldevDashboard.Api.Features.Auth.GetCurrentUser;
 using MldevDashboard.Api.Features.Auth.Login;
+using MldevDashboard.Api.Features.Auth.RequestPasswordReset;
 
 namespace MldevDashboard.Api.Features.Auth;
 
@@ -15,7 +16,7 @@ public static class AuthEndpoints
 
         group.MapGet("/me", GetCurrentUserEndpoint.HandleAsync)
             .RequireAuthorization();
-
+        group.MapPost("/password-reset/request", RequestPasswordResetEndpoint.HandleAsync).AllowAnonymous();
         return app;
     }
 }

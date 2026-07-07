@@ -27,7 +27,8 @@ public static class DependencyInjection
                 options.Password.RequireNonAlphanumeric = false;
             })
             .AddRoles<IdentityRole<Guid>>()
-            .AddEntityFrameworkStores<MldevDashboardDbContext>();
+            .AddEntityFrameworkStores<MldevDashboardDbContext>()
+            .AddDefaultTokenProviders();
 
         return services;
     }

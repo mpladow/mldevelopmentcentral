@@ -30,6 +30,8 @@ using MldevDashboard.Api.Identity;
 using MldevDashboard.Infrastructure;
 using MldevDashboard.Infrastructure.Identity;
 using MldevDashboard.Infrastructure.Persistence;
+using MldevDashboard.Api.Messaging;
+using MldevDashboard.Api.Features.Auth.RequestPasswordReset;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -71,7 +73,12 @@ builder.Services.AddScoped<GetSystemThemeHandler>();
 builder.Services.AddScoped<UpdateSystemThemeHandler>();
 builder.Services.AddScoped<ListFactionsHandler>();
 builder.Services.AddScoped<ListUnitsHandler>();
+builder.Services.AddScoped<RequestPasswordResetHandler>();
+builder.Services.Configure<RequestPasswordResetOptions>(builder.Configuration.GetSection(RequestPasswordResetOptions.SectionName));
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection(JwtOptions.SectionName));
+builder.Services.Configure<ServiceBusOptions>(builder.Configuration.GetSection(ServiceBusOptions.SectionName));
+
+builder.Services.AddSingleton<IPasswordResetEmailPublisher, ServiceBusPasswordResetEmailPublisher>();
 
 var jwtOptions = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>()
     ?? new JwtOptions();
